@@ -36,9 +36,7 @@ public static class GameplayRigBuilder
             Object.DestroyImmediate(player.GetComponent<CapsuleCollider>());
 
             var controller = player.AddComponent<CharacterController>();
-            controller.height = 2f;
-            controller.radius = 0.35f;
-            controller.center = new Vector3(0f, 1f, 0f);
+            PlayerAnchorUtility.EnsureStandardController(controller);
 
             player.AddComponent<PlayerController>();
             player.AddComponent<PlayerStats>();
@@ -55,6 +53,12 @@ public static class GameplayRigBuilder
         if (player.GetComponent<GameScore>() == null)
         {
             player.AddComponent<GameScore>();
+        }
+
+        var characterController = player.GetComponent<CharacterController>();
+        if (characterController != null)
+        {
+            PlayerAnchorUtility.AlignCapsuleVisual(player);
         }
 
         player.transform.position = spawn;

@@ -39,6 +39,7 @@ public class PlayerController : MonoBehaviour
     {
         controller = GetComponent<CharacterController>();
         stats = EnsureSinglePlayerStats();
+        PlayerAnchorUtility.AlignCapsuleVisual(gameObject);
         if (cameraTransform == null && Camera.main != null)
         {
             cameraTransform = Camera.main.transform;

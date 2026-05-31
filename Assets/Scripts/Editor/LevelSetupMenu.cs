@@ -30,7 +30,7 @@ public static class LevelSetupMenu
             }
         }
 
-        GameplayRigBuilder.EnsureCoreGameplayObjects(new Vector3(0f, 1.2f, -3f));
+        GameplayRigBuilder.EnsureCoreGameplayObjects(new Vector3(0f, 0.25f, -3f));
         ParkourLevelBuilder.Generate(true);
 
         var managerGo = new GameObject("LevelManager");

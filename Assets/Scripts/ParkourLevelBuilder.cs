@@ -61,7 +61,20 @@ public static class ParkourLevelBuilder
         var player = GameObject.Find("Player");
         if (player != null)
         {
-            player.transform.position = new Vector3(0f, 1.2f, -3f);
+            var characterController = player.GetComponent<CharacterController>();
+            if (characterController != null)
+            {
+                float groundY = PlatformTop(FloorTop);
+                player.transform.position = PlayerAnchorUtility.GetSpawnPositionForGround(
+                    new Vector3(0f, 0f, -3f),
+                    groundY,
+                    characterController);
+            }
+            else
+            {
+                player.transform.position = new Vector3(0f, PlatformTop(FloorTop), -3f);
+            }
+
             player.transform.rotation = Quaternion.identity;
         }
 
