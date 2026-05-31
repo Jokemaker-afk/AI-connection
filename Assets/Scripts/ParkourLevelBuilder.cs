@@ -77,6 +77,29 @@ public static class ParkourLevelBuilder
             camera.SetTarget(player.transform);
             camera.ConfigureAlwaysFollow(true, 6.5f, 2.4f);
         }
+
+        if (player == null)
+        {
+            return;
+        }
+
+        var controller = player.GetComponent<PlayerController>();
+        if (controller == null)
+        {
+            controller = player.AddComponent<PlayerController>();
+        }
+
+        var stats = player.GetComponent<PlayerStats>();
+        if (stats == null)
+        {
+            stats = player.AddComponent<PlayerStats>();
+        }
+
+        var hud = Object.FindFirstObjectByType<PlayerHUD>();
+        if (hud != null)
+        {
+            hud.BindTo(stats, player.GetComponent<GameScore>());
+        }
     }
 
     static float PlatformTop(float platformCenterY)

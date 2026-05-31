@@ -22,11 +22,25 @@ public class PlayerHUD : MonoBehaviour
         ConfigureSlider(healthSlider);
         ConfigureSlider(staminaSlider);
         SubscribeScore();
+        SubscribeStats();
+    }
+
+    void OnEnable()
+    {
+        BindReferences();
+        SubscribeStats();
+        RefreshBars();
+    }
+
+    void OnDisable()
+    {
+        UnsubscribeStats();
     }
 
     void OnDestroy()
     {
         UnsubscribeScore();
+        UnsubscribeStats();
     }
 
     void LateUpdate()
@@ -40,20 +54,83 @@ public class PlayerHUD : MonoBehaviour
 
     void Update()
     {
+        RefreshBars();
+    }
+
+    public void BindTo(PlayerStats playerStats, GameScore score = null)
+    {
+        UnsubscribeStats();
+
+        stats = playerStats;
+        if (score != null)
+        {
+            UnsubscribeScore();
+            gameScore = score;
+            SubscribeScore();
+        }
+
+        SubscribeStats();
+        RefreshBars();
+    }
+
+    void SubscribeStats()
+    {
+        UnsubscribeStats();
+
         if (stats == null)
         {
             return;
         }
 
-        if (healthSlider != null)
+        stats.OnHealthChanged += HandleHealthChanged;
+        stats.OnStaminaChanged += HandleStaminaChanged;
+    }
+
+    void UnsubscribeStats()
+    {
+        if (stats == null)
         {
-            healthSlider.value = stats.HealthNormalized;
+            return;
         }
 
-        if (staminaSlider != null)
+        stats.OnHealthChanged -= HandleHealthChanged;
+        stats.OnStaminaChanged -= HandleStaminaChanged;
+    }
+
+    void HandleHealthChanged(float _)
+    {
+        RefreshHealthBar();
+    }
+
+    void HandleStaminaChanged(float _)
+    {
+        RefreshStaminaBar();
+    }
+
+    void RefreshBars()
+    {
+        RefreshHealthBar();
+        RefreshStaminaBar();
+    }
+
+    void RefreshHealthBar()
+    {
+        if (stats == null || healthSlider == null)
         {
-            staminaSlider.value = stats.StaminaNormalized;
+            return;
         }
+
+        healthSlider.value = stats.HealthNormalized;
+    }
+
+    void RefreshStaminaBar()
+    {
+        if (stats == null || staminaSlider == null)
+        {
+            return;
+        }
+
+        staminaSlider.value = stats.StaminaNormalized;
     }
 
     void BindReferences()
@@ -111,6 +188,7 @@ public class PlayerHUD : MonoBehaviour
     public void RebuildUi()
     {
         UnsubscribeScore();
+        UnsubscribeStats();
 
         for (int i = transform.childCount - 1; i >= 0; i--)
         {
@@ -134,6 +212,8 @@ public class PlayerHUD : MonoBehaviour
 
         BindReferences();
         SubscribeScore();
+        SubscribeStats();
+        RefreshBars();
 
         var rect = GetComponent<RectTransform>();
         if (rect != null)

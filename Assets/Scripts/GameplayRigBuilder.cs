@@ -41,8 +41,16 @@ public static class GameplayRigBuilder
             controller.center = new Vector3(0f, 1f, 0f);
 
             player.AddComponent<PlayerController>();
+            player.AddComponent<PlayerStats>();
             player.AddComponent<GameScore>();
         }
+
+        if (player.GetComponent<PlayerStats>() == null)
+        {
+            player.AddComponent<PlayerStats>();
+        }
+
+        RemoveDuplicateComponents<PlayerStats>(player);
 
         if (player.GetComponent<GameScore>() == null)
         {
@@ -101,10 +109,27 @@ public static class GameplayRigBuilder
 
         hud.RebuildUi();
 
+        var player = GameObject.Find("Player");
+        var stats = player != null ? player.GetComponent<PlayerStats>() : null;
+        var score = player != null ? player.GetComponent<GameScore>() : null;
+        if (stats != null)
+        {
+            hud.BindTo(stats, score);
+        }
+
         var rect = hudGo.GetComponent<RectTransform>();
         if (rect != null)
         {
             rect.localScale = Vector3.one;
+        }
+    }
+
+    static void RemoveDuplicateComponents<T>(GameObject target) where T : Component
+    {
+        var components = target.GetComponents<T>();
+        for (int i = 1; i < components.Length; i++)
+        {
+            Object.DestroyImmediate(components[i]);
         }
     }
 }

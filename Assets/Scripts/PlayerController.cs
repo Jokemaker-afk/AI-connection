@@ -23,6 +23,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float voidDamageStartY = 0.05f;
     [SerializeField] float voidForceKillY = -8f;
     [SerializeField] float voidDamagePerSecond = 50f;
+    [SerializeField] float voidFallBelowGroundMargin = 1.2f;
 
     CharacterController controller;
     PlayerStats stats;
@@ -30,13 +31,14 @@ public class PlayerController : MonoBehaviour
     Vector3 velocity;
     float lastGroundedTime;
     float lastJumpPressedTime;
+    float lastSafeGroundY;
     Vector3 spawnPosition;
     Quaternion spawnRotation;
 
     void Awake()
     {
         controller = GetComponent<CharacterController>();
-        stats = GetComponent<PlayerStats>();
+        stats = EnsureSinglePlayerStats();
         if (cameraTransform == null && Camera.main != null)
         {
             cameraTransform = Camera.main.transform;
@@ -49,12 +51,46 @@ public class PlayerController : MonoBehaviour
 
         spawnPosition = transform.position;
         spawnRotation = transform.rotation;
+        lastSafeGroundY = transform.position.y;
         stats.OnDeath += HandleDeath;
     }
 
     void Start()
     {
-        enableVoidFallPenalty = SceneManager.GetActiveScene().name == "Level2";
+        if (SceneManager.GetActiveScene().name == "Level2")
+        {
+            enableVoidFallPenalty = true;
+            voidFallBelowGroundMargin = 1.2f;
+            voidDamageStartY = -0.5f;
+        }
+
+        lastSafeGroundY = transform.position.y;
+        BindGameplayHud();
+    }
+
+    PlayerStats EnsureSinglePlayerStats()
+    {
+        var allStats = GetComponents<PlayerStats>();
+        if (allStats.Length == 0)
+        {
+            return gameObject.AddComponent<PlayerStats>();
+        }
+
+        for (int i = 1; i < allStats.Length; i++)
+        {
+            Destroy(allStats[i]);
+        }
+
+        return allStats[0];
+    }
+
+    void BindGameplayHud()
+    {
+        var hud = FindFirstObjectByType<PlayerHUD>();
+        if (hud != null)
+        {
+            hud.BindTo(stats, GetComponent<GameScore>());
+        }
     }
 
     void OnDestroy()
@@ -76,7 +112,8 @@ public class PlayerController : MonoBehaviour
         transform.SetPositionAndRotation(spawnPosition, spawnRotation);
         controller.enabled = true;
         velocity = Vector3.zero;
-        stats.ResetHealth();
+        stats.ResetForRespawn();
+        lastSafeGroundY = spawnPosition.y;
     }
 
     void Update()
@@ -93,6 +130,11 @@ public class PlayerController : MonoBehaviour
         stats.RegisterStaminaInput(shiftHeld, spaceHeld);
 
         bool grounded = IsGrounded();
+        if (grounded)
+        {
+            lastSafeGroundY = transform.position.y;
+        }
+
         if (grounded && velocity.y < 0f)
         {
             velocity.y = -2f;
@@ -188,7 +230,14 @@ public class PlayerController : MonoBehaviour
         }
 
         float y = transform.position.y;
-        if (y < voidDamageStartY)
+        if (IsGrounded())
+        {
+            lastSafeGroundY = y;
+            return;
+        }
+
+        float fallDamageThreshold = lastSafeGroundY - voidFallBelowGroundMargin;
+        if (y < fallDamageThreshold || y < voidDamageStartY)
         {
             stats.ApplyContinuousDamage(voidDamagePerSecond);
         }

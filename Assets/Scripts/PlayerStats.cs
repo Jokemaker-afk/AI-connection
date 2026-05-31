@@ -29,12 +29,15 @@ public class PlayerStats : MonoBehaviour
     public bool IsAlive => currentHealth > 0f;
 
     public event Action<float> OnHealthChanged;
+    public event Action<float> OnStaminaChanged;
     public event Action OnDeath;
 
     void Awake()
     {
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
         currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
+        NotifyHealthChanged();
+        NotifyStaminaChanged();
     }
 
     public void RegisterStaminaInput(bool shiftHeld, bool spaceHeld)
@@ -52,7 +55,12 @@ public class PlayerStats : MonoBehaviour
             return;
         }
 
+        float previous = currentStamina;
         currentStamina = Mathf.Max(0f, currentStamina - sprintDrainPerSecond * deltaTime);
+        if (!Mathf.Approximately(previous, currentStamina))
+        {
+            NotifyStaminaChanged();
+        }
     }
 
     public bool TryConsumeJumpStamina()
@@ -64,6 +72,7 @@ public class PlayerStats : MonoBehaviour
 
         currentStamina -= jumpStaminaCost;
         lastStaminaInputTime = Time.time;
+        NotifyStaminaChanged();
         return true;
     }
 
@@ -81,7 +90,12 @@ public class PlayerStats : MonoBehaviour
 
         if (currentStamina < maxStamina)
         {
+            float previous = currentStamina;
             currentStamina = Mathf.Min(maxStamina, currentStamina + regenPerSecond * Time.deltaTime);
+            if (!Mathf.Approximately(previous, currentStamina))
+            {
+                NotifyStaminaChanged();
+            }
         }
     }
 
@@ -99,7 +113,7 @@ public class PlayerStats : MonoBehaviour
 
         currentHealth = Mathf.Max(0f, currentHealth - amount);
         lastDamageTime = Time.time;
-        OnHealthChanged?.Invoke(currentHealth);
+        NotifyHealthChanged();
 
         if (!IsAlive)
         {
@@ -117,7 +131,7 @@ public class PlayerStats : MonoBehaviour
         }
 
         currentHealth = Mathf.Max(0f, currentHealth - damagePerSecond * Time.deltaTime);
-        OnHealthChanged?.Invoke(currentHealth);
+        NotifyHealthChanged();
 
         if (!IsAlive)
         {
@@ -133,7 +147,7 @@ public class PlayerStats : MonoBehaviour
         }
 
         currentHealth = 0f;
-        OnHealthChanged?.Invoke(currentHealth);
+        NotifyHealthChanged();
         OnDeath?.Invoke();
     }
 
@@ -141,17 +155,41 @@ public class PlayerStats : MonoBehaviour
     {
         currentHealth = maxHealth;
         lastDamageTime = -999f;
-        OnHealthChanged?.Invoke(currentHealth);
+        NotifyHealthChanged();
+    }
+
+    public void ResetStamina()
+    {
+        currentStamina = maxStamina;
+        lastStaminaInputTime = -999f;
+        NotifyStaminaChanged();
+    }
+
+    public void ResetForRespawn()
+    {
+        ResetHealth();
+        ResetStamina();
     }
 
     public void SetHealth(float value)
     {
         currentHealth = Mathf.Clamp(value, 0f, maxHealth);
-        OnHealthChanged?.Invoke(currentHealth);
+        NotifyHealthChanged();
     }
 
     public void SetStamina(float value)
     {
         currentStamina = Mathf.Clamp(value, 0f, maxStamina);
+        NotifyStaminaChanged();
+    }
+
+    void NotifyHealthChanged()
+    {
+        OnHealthChanged?.Invoke(currentHealth);
+    }
+
+    void NotifyStaminaChanged()
+    {
+        OnStaminaChanged?.Invoke(currentStamina);
     }
 }
