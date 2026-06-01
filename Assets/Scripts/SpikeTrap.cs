@@ -48,7 +48,7 @@ public class SpikeTrap : MonoBehaviour
         armed = true;
     }
 
-    public static SpikeTrap Create(Transform parent, string name, Vector3 position, Vector3 baseSize, int spikeCount = 3)
+    public static SpikeTrap Create(Transform parent, string name, Vector3 position, Vector3 baseSize, int spikeCount = 3, float damageAmount = 18f)
     {
         var root = new GameObject(name);
         root.transform.SetParent(parent, false);
@@ -60,6 +60,7 @@ public class SpikeTrap : MonoBehaviour
         trigger.center = new Vector3(0f, 0.25f, 0f);
 
         var trap = root.AddComponent<SpikeTrap>();
+        trap.damage = damageAmount;
 
         float spacing = baseSize.x / spikeCount;
         float startX = -baseSize.x * 0.5f + spacing * 0.5f;

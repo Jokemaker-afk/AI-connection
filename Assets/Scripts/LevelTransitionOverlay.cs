@@ -22,6 +22,14 @@ public static class LevelTransitionOverlay
         root.SetActive(true);
     }
 
+    public static void ShowAdvancePrompt(string title, string hint)
+    {
+        EnsureCreated();
+        messageText.fontSize = 36;
+        messageText.text = $"{title}\n\n<size=30><color=#FFE066>{hint}</color></size>";
+        root.SetActive(true);
+    }
+
     public static void Hide()
     {
         if (root != null)

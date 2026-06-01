@@ -18,6 +18,7 @@ public class LevelManager : MonoBehaviour
     [SerializeField] string levelCompleteMessage = "恭喜通关！";
     [SerializeField] string scoreAdvanceMessage = "分数达标！";
     [SerializeField] string scoreAdvanceHint = "按 Y 键进入第二关";
+    [SerializeField] string goalAdvanceHint = "按 Y 键进入下一关";
 
     bool transitioning;
     GameScore gameScore;
@@ -76,7 +77,22 @@ public class LevelManager : MonoBehaviour
             return;
         }
 
-        BeginTransition(null);
+        BeginTransition(string.IsNullOrEmpty(nextSceneName) ? null : nextSceneName);
+    }
+
+    public void ConfigureGoalTransition(string sceneName, string completeMessage, string advanceHint)
+    {
+        winCondition = LevelWinCondition.ReachGoal;
+        nextSceneName = sceneName;
+        if (!string.IsNullOrEmpty(completeMessage))
+        {
+            levelCompleteMessage = completeMessage;
+        }
+
+        if (!string.IsNullOrEmpty(advanceHint))
+        {
+            goalAdvanceHint = advanceHint;
+        }
     }
 
     void BeginTransition(string sceneName)
@@ -113,12 +129,23 @@ public class LevelManager : MonoBehaviour
             yield break;
         }
 
-        int currentScore = gameScore != null ? gameScore.Score : scoreToAdvance;
-        LevelTransitionOverlay.ShowScoreAdvancePrompt(
-            scoreAdvanceMessage,
-            currentScore,
-            scoreToAdvance,
-            scoreAdvanceHint);
+        string hint = winCondition == LevelWinCondition.ScoreThreshold
+            ? scoreAdvanceHint
+            : goalAdvanceHint;
+
+        if (winCondition == LevelWinCondition.ScoreThreshold)
+        {
+            int currentScore = gameScore != null ? gameScore.Score : scoreToAdvance;
+            LevelTransitionOverlay.ShowScoreAdvancePrompt(
+                scoreAdvanceMessage,
+                currentScore,
+                scoreToAdvance,
+                hint);
+        }
+        else
+        {
+            LevelTransitionOverlay.ShowAdvancePrompt(levelCompleteMessage, hint);
+        }
 
         yield return WaitForConfirmKey();
 

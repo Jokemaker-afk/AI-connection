@@ -27,6 +27,7 @@ public class PlayerController : MonoBehaviour
 
     CharacterController controller;
     PlayerStats stats;
+    PlayerBuffController buffController;
     PlayerCameraController cameraController;
     Vector3 velocity;
     float lastGroundedTime;
@@ -39,6 +40,17 @@ public class PlayerController : MonoBehaviour
     {
         controller = GetComponent<CharacterController>();
         stats = EnsureSinglePlayerStats();
+        if (GetComponent<PlayerBuffController>() == null)
+        {
+            gameObject.AddComponent<PlayerBuffController>();
+        }
+
+        if (GetComponent<PlayerShieldVisual>() == null)
+        {
+            gameObject.AddComponent<PlayerShieldVisual>();
+        }
+
+        buffController = GetComponent<PlayerBuffController>();
         PlayerAnchorUtility.AlignCapsuleVisual(gameObject);
         if (cameraTransform == null && Camera.main != null)
         {
@@ -91,6 +103,13 @@ public class PlayerController : MonoBehaviour
         if (hud != null)
         {
             hud.BindTo(stats, GetComponent<GameScore>());
+        }
+
+        var buffController = GetComponent<PlayerBuffController>();
+        var buffHud = FindFirstObjectByType<PlayerBuffHud>();
+        if (buffHud != null && buffController != null)
+        {
+            buffHud.BindTo(buffController);
         }
     }
 
@@ -185,7 +204,8 @@ public class PlayerController : MonoBehaviour
         }
 
         bool wantsSprint = shiftHeld && move.sqrMagnitude > 0.001f && stats.CanSprint();
-        float speed = moveSpeed * (wantsSprint ? sprintSpeedMultiplier : 1f);
+        float buffSpeed = buffController != null ? buffController.GetSpeedMultiplier() : 1f;
+        float speed = moveSpeed * buffSpeed * (wantsSprint ? sprintSpeedMultiplier : 1f);
 
         if (shiftHeld && move.sqrMagnitude > 0.001f)
         {

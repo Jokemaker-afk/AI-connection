@@ -18,6 +18,11 @@ public class PlayerStats : MonoBehaviour
 
     float lastStaminaInputTime = -999f;
     float lastDamageTime = -999f;
+    float infiniteStaminaEndTime = -999f;
+    float infiniteStaminaTotalDuration = 7f;
+    bool shieldActive;
+    float invincibleUntilTime = -999f;
+    float invincibleTotalDuration = 1f;
 
     public float MaxHealth => maxHealth;
     public float CurrentHealth => currentHealth;
@@ -27,9 +32,17 @@ public class PlayerStats : MonoBehaviour
     public float StaminaNormalized => maxStamina > 0f ? currentStamina / maxStamina : 0f;
     public float JumpStaminaCost => jumpStaminaCost;
     public bool IsAlive => currentHealth > 0f;
+    public bool HasShield => shieldActive;
+    public bool IsInvincible => Time.time < invincibleUntilTime;
+    public bool HasInfiniteStamina => Time.time < infiniteStaminaEndTime;
+    public float InfiniteStaminaRemaining => Mathf.Max(0f, infiniteStaminaEndTime - Time.time);
+    public float InfiniteStaminaTotalDuration => infiniteStaminaTotalDuration;
+    public float InvincibleRemaining => Mathf.Max(0f, invincibleUntilTime - Time.time);
+    public float InvincibleTotalDuration => invincibleTotalDuration;
 
     public event Action<float> OnHealthChanged;
     public event Action<float> OnStaminaChanged;
+    public event Action<bool, bool> OnShieldStateChanged;
     public event Action OnDeath;
 
     void Awake()
@@ -50,7 +63,7 @@ public class PlayerStats : MonoBehaviour
 
     public void DrainSprint(float deltaTime)
     {
-        if (deltaTime <= 0f)
+        if (deltaTime <= 0f || HasInfiniteStamina)
         {
             return;
         }
@@ -65,6 +78,11 @@ public class PlayerStats : MonoBehaviour
 
     public bool TryConsumeJumpStamina()
     {
+        if (HasInfiniteStamina)
+        {
+            return true;
+        }
+
         if (currentStamina < jumpStaminaCost)
         {
             return false;
@@ -78,11 +96,16 @@ public class PlayerStats : MonoBehaviour
 
     public bool CanSprint()
     {
-        return currentStamina > 0f;
+        return HasInfiniteStamina || currentStamina > 0f;
     }
 
     void Update()
     {
+        if (HasInfiniteStamina)
+        {
+            return;
+        }
+
         if (Time.time - lastStaminaInputTime < regenDelay)
         {
             return;
@@ -106,11 +129,72 @@ public class PlayerStats : MonoBehaviour
             return false;
         }
 
+        if (IsInvincible)
+        {
+            return false;
+        }
+
+        if (shieldActive)
+        {
+            ConsumeShield();
+            return false;
+        }
+
         if (Time.time - lastDamageTime < damageImmunityDuration)
         {
             return false;
         }
 
+        ApplyDamageInternal(amount);
+        return true;
+    }
+
+    public void ApplyContinuousDamage(float damagePerSecond)
+    {
+        if (!IsAlive || damagePerSecond <= 0f || IsInvincible)
+        {
+            return;
+        }
+
+        if (shieldActive)
+        {
+            ConsumeShield();
+            return;
+        }
+
+        ApplyDamageInternal(damagePerSecond * Time.deltaTime);
+    }
+
+    public void ApplyGuaranteedHealthLoss(float percentOfCurrentHealth)
+    {
+        if (!IsAlive || IsInvincible)
+        {
+            return;
+        }
+
+        if (shieldActive)
+        {
+            ConsumeShield();
+            return;
+        }
+
+        float clamped = Mathf.Clamp01(percentOfCurrentHealth);
+        float damage = currentHealth * clamped;
+        if (clamped >= 0.999f)
+        {
+            currentHealth = 1f;
+        }
+        else
+        {
+            currentHealth = Mathf.Max(1f, currentHealth - damage);
+        }
+
+        lastDamageTime = Time.time;
+        NotifyHealthChanged();
+    }
+
+    void ApplyDamageInternal(float amount)
+    {
         currentHealth = Mathf.Max(0f, currentHealth - amount);
         lastDamageTime = Time.time;
         NotifyHealthChanged();
@@ -119,24 +203,39 @@ public class PlayerStats : MonoBehaviour
         {
             OnDeath?.Invoke();
         }
-
-        return true;
     }
 
-    public void ApplyContinuousDamage(float damagePerSecond)
+    public void ActivateInfiniteStamina(float durationSeconds)
     {
-        if (!IsAlive || damagePerSecond <= 0f)
+        infiniteStaminaTotalDuration = durationSeconds;
+        infiniteStaminaEndTime = Time.time + durationSeconds;
+        currentStamina = maxStamina;
+        NotifyStaminaChanged();
+    }
+
+    public void ActivateShield()
+    {
+        shieldActive = true;
+        OnShieldStateChanged?.Invoke(true, false);
+    }
+
+    void ConsumeShield()
+    {
+        if (!shieldActive)
         {
             return;
         }
 
-        currentHealth = Mathf.Max(0f, currentHealth - damagePerSecond * Time.deltaTime);
-        NotifyHealthChanged();
+        shieldActive = false;
+        invincibleUntilTime = Time.time + invincibleTotalDuration;
+        OnShieldStateChanged?.Invoke(false, true);
+    }
 
-        if (!IsAlive)
-        {
-            OnDeath?.Invoke();
-        }
+    public void RestoreFullHealth()
+    {
+        currentHealth = maxHealth;
+        lastDamageTime = -999f;
+        NotifyHealthChanged();
     }
 
     public void ForceKill()
@@ -169,6 +268,10 @@ public class PlayerStats : MonoBehaviour
     {
         ResetHealth();
         ResetStamina();
+        shieldActive = false;
+        invincibleUntilTime = -999f;
+        infiniteStaminaEndTime = -999f;
+        OnShieldStateChanged?.Invoke(false, false);
     }
 
     public void SetHealth(float value)

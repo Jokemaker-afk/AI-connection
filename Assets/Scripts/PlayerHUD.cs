@@ -21,6 +21,7 @@ public class PlayerHUD : MonoBehaviour
 
         ConfigureSlider(healthSlider);
         ConfigureSlider(staminaSlider);
+        EnsureBuffHud();
         SubscribeScore();
         SubscribeStats();
     }
@@ -190,16 +191,16 @@ public class PlayerHUD : MonoBehaviour
         UnsubscribeScore();
         UnsubscribeStats();
 
-        for (int i = transform.childCount - 1; i >= 0; i--)
+        var statsPanel = transform.Find("StatsPanel");
+        if (statsPanel != null)
         {
-            var child = transform.GetChild(i);
             if (Application.isPlaying)
             {
-                Destroy(child.gameObject);
+                Destroy(statsPanel.gameObject);
             }
             else
             {
-                DestroyImmediate(child.gameObject);
+                DestroyImmediate(statsPanel.gameObject);
             }
         }
 
@@ -215,6 +216,14 @@ public class PlayerHUD : MonoBehaviour
         SubscribeStats();
         RefreshBars();
 
+        var buffHud = EnsureBuffHud();
+        buffHud.RebuildUi();
+        var buffController = FindFirstObjectByType<PlayerBuffController>();
+        if (buffController != null)
+        {
+            buffHud.BindTo(buffController);
+        }
+
         var rect = GetComponent<RectTransform>();
         if (rect != null)
         {
@@ -228,6 +237,17 @@ public class PlayerHUD : MonoBehaviour
             || healthSlider == null
             || staminaSlider == null
             || scoreText == null;
+    }
+
+    PlayerBuffHud EnsureBuffHud()
+    {
+        var buffHud = GetComponent<PlayerBuffHud>();
+        if (buffHud == null)
+        {
+            buffHud = gameObject.AddComponent<PlayerBuffHud>();
+        }
+
+        return buffHud;
     }
 
     void BuildRuntimeUI()

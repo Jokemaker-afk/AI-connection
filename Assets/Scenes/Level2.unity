@@ -1452,9 +1452,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelManager
   winCondition: 1
   scoreToAdvance: 0
-  nextSceneName: 
+  nextSceneName: Level3
   transitionDelay: 1.5
-  levelCompleteMessage: "\u606D\u559C\u901A\u5173\uFF01\u5230\u8FBE\u7EC8\u70B9\uFF01"
+  levelCompleteMessage: "\u7B2C\u4E8C\u5173\u901A\u5173\uFF01"
+  scoreAdvanceMessage: "\u5206\u6570\u8FBE\u6807\uFF01"
+  scoreAdvanceHint: "\u6309 Y \u952E\u8FDB\u5165\u7B2C\u4E8C\u5173"
+  goalAdvanceHint: "\u6309 Y \u952E\u8FDB\u5165\u7B2C\u4E09\u5173\uFF08Buff \u6559\u5B66\uFF09"
 --- !u!4 &236397284
 Transform:
   m_ObjectHideFlags: 0

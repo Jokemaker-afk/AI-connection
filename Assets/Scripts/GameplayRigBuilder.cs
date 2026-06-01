@@ -55,6 +55,16 @@ public static class GameplayRigBuilder
             player.AddComponent<GameScore>();
         }
 
+        if (player.GetComponent<PlayerBuffController>() == null)
+        {
+            player.AddComponent<PlayerBuffController>();
+        }
+
+        if (player.GetComponent<PlayerShieldVisual>() == null)
+        {
+            player.AddComponent<PlayerShieldVisual>();
+        }
+
         var characterController = player.GetComponent<CharacterController>();
         if (characterController != null)
         {
@@ -111,14 +121,27 @@ public static class GameplayRigBuilder
             hud = hudGo.AddComponent<PlayerHUD>();
         }
 
+        var buffHud = hudGo.GetComponent<PlayerBuffHud>();
+        if (buffHud == null)
+        {
+            buffHud = hudGo.AddComponent<PlayerBuffHud>();
+        }
+
         hud.RebuildUi();
+        buffHud.RebuildUi();
 
         var player = GameObject.Find("Player");
         var stats = player != null ? player.GetComponent<PlayerStats>() : null;
         var score = player != null ? player.GetComponent<GameScore>() : null;
+        var buffController = player != null ? player.GetComponent<PlayerBuffController>() : null;
         if (stats != null)
         {
             hud.BindTo(stats, score);
+        }
+
+        if (buffController != null)
+        {
+            buffHud.BindTo(buffController);
         }
 
         var rect = hudGo.GetComponent<RectTransform>();
