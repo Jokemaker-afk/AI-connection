@@ -22,6 +22,7 @@ public class PlayerHUD : MonoBehaviour
         ConfigureSlider(healthSlider);
         ConfigureSlider(staminaSlider);
         EnsureBuffHud();
+        EnsureInventoryHud();
         SubscribeScore();
         SubscribeStats();
     }
@@ -224,6 +225,15 @@ public class PlayerHUD : MonoBehaviour
             buffHud.BindTo(buffController);
         }
 
+        var inventoryHud = EnsureInventoryHud();
+        inventoryHud.RebuildUi();
+        var inventory = FindFirstObjectByType<PlayerInventory>();
+        var pickupInteractor = FindFirstObjectByType<PlayerPickupInteractor>();
+        if (inventory != null)
+        {
+            inventoryHud.BindTo(inventory, pickupInteractor);
+        }
+
         var rect = GetComponent<RectTransform>();
         if (rect != null)
         {
@@ -248,6 +258,17 @@ public class PlayerHUD : MonoBehaviour
         }
 
         return buffHud;
+    }
+
+    PlayerInventoryHud EnsureInventoryHud()
+    {
+        var inventoryHud = GetComponent<PlayerInventoryHud>();
+        if (inventoryHud == null)
+        {
+            inventoryHud = gameObject.AddComponent<PlayerInventoryHud>();
+        }
+
+        return inventoryHud;
     }
 
     void BuildRuntimeUI()

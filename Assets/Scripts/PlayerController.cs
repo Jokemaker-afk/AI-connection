@@ -111,6 +111,14 @@ public class PlayerController : MonoBehaviour
         {
             buffHud.BindTo(buffController);
         }
+
+        var inventory = GetComponent<PlayerInventory>();
+        var pickupInteractor = GetComponent<PlayerPickupInteractor>();
+        var inventoryHud = FindFirstObjectByType<PlayerInventoryHud>();
+        if (inventoryHud != null && inventory != null)
+        {
+            inventoryHud.BindTo(inventory, pickupInteractor);
+        }
     }
 
     void OnDestroy()

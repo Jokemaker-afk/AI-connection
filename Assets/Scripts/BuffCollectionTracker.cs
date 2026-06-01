@@ -58,6 +58,12 @@ public class BuffCollectionTracker : MonoBehaviour
         if (AllCollected)
         {
             OnAllBuffsCollected?.Invoke();
+
+            // Fail-safe: immediately open the Level4 transition prompt.
+            if (LevelManager.Instance != null)
+            {
+                LevelManager.Instance.NotifyGoalReached();
+            }
         }
     }
 

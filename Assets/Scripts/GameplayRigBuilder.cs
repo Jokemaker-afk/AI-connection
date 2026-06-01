@@ -65,6 +65,16 @@ public static class GameplayRigBuilder
             player.AddComponent<PlayerShieldVisual>();
         }
 
+        if (player.GetComponent<PlayerInventory>() == null)
+        {
+            player.AddComponent<PlayerInventory>();
+        }
+
+        if (player.GetComponent<PlayerPickupInteractor>() == null)
+        {
+            player.AddComponent<PlayerPickupInteractor>();
+        }
+
         var characterController = player.GetComponent<CharacterController>();
         if (characterController != null)
         {
@@ -127,13 +137,22 @@ public static class GameplayRigBuilder
             buffHud = hudGo.AddComponent<PlayerBuffHud>();
         }
 
+        var inventoryHud = hudGo.GetComponent<PlayerInventoryHud>();
+        if (inventoryHud == null)
+        {
+            inventoryHud = hudGo.AddComponent<PlayerInventoryHud>();
+        }
+
         hud.RebuildUi();
         buffHud.RebuildUi();
+        inventoryHud.RebuildUi();
 
         var player = GameObject.Find("Player");
         var stats = player != null ? player.GetComponent<PlayerStats>() : null;
         var score = player != null ? player.GetComponent<GameScore>() : null;
         var buffController = player != null ? player.GetComponent<PlayerBuffController>() : null;
+        var inventory = player != null ? player.GetComponent<PlayerInventory>() : null;
+        var pickupInteractor = player != null ? player.GetComponent<PlayerPickupInteractor>() : null;
         if (stats != null)
         {
             hud.BindTo(stats, score);
@@ -142,6 +161,11 @@ public static class GameplayRigBuilder
         if (buffController != null)
         {
             buffHud.BindTo(buffController);
+        }
+
+        if (inventory != null)
+        {
+            inventoryHud.BindTo(inventory, pickupInteractor);
         }
 
         var rect = hudGo.GetComponent<RectTransform>();

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class HubAdvancePortal : MonoBehaviour
 {
@@ -64,14 +64,18 @@ public class HubAdvancePortal : MonoBehaviour
 
     void ShowPortal()
     {
-        if (portalVisible)
+        if (!portalVisible)
         {
-            return;
+            portalVisible = true;
+            portalRoot = BuildPortalVisual(GetPortalWorldPosition());
+            BuffNotificationOverlay.ShowCustom("四 Buff 已集齐！", "返回出生点，进入传送门前往下一关");
         }
 
-        portalVisible = true;
-        portalRoot = BuildPortalVisual(GetPortalWorldPosition());
-        BuffNotificationOverlay.ShowCustom("四 Buff 已集齐！", "返回出生点，进入传送门前往下一关");
+        // User expects immediate center prompt after collecting 4 buffs.
+        if (LevelManager.Instance != null)
+        {
+            LevelManager.Instance.NotifyGoalReached();
+        }
     }
 
     Vector3 GetPortalWorldPosition()
@@ -129,7 +133,7 @@ public class HubAdvancePortal : MonoBehaviour
 
         triggerGo.AddComponent<LevelGoal>();
 
-        var spinner = root.AddComponent<HubAdvancePortalSpinner>();
+        root.AddComponent<HubAdvancePortalSpinner>();
 
         CreateSign(root.transform, new Vector3(0f, 2.6f, 0f), "下一关传送点\n按 Y 确认进入");
 
