@@ -270,17 +270,4 @@
 
 ---
 
-## 14. Git 状态（最新）
-
-- **分支**：`work`
-- **远程同步**：本地与 `unity-gaming/work` 同步（up to date）
-- **最新提交**：`92741f8`  
-  `Update Level3-to-Level4 flow and add Level4 inventory loop.`
-- **工作区状态**：
-  - `PROJECT_GUIDE.md`：已删除（未暂存）
-  - `PROJECT_PROCESS.md`：新文件（未跟踪）
-- **说明**：当前文档已迁移到 `PROJECT_PROCESS.md`，若要入库需执行 `git add PROJECT_PROCESS.md` 并确认是否保留删除 `PROJECT_GUIDE.md`。
-
----
-
 *如与场景实际状态不一致，请以 `Assets/Scripts` 和当前 Unity Hierarchy 为准。*

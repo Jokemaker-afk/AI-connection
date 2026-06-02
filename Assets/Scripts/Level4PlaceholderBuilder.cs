@@ -118,15 +118,7 @@ public static class Level4PlaceholderBuilder
 
     static void EnsureInventoryComponents(GameObject player)
     {
-        if (player.GetComponent<PlayerInventory>() == null)
-        {
-            player.AddComponent<PlayerInventory>();
-        }
-
-        if (player.GetComponent<PlayerPickupInteractor>() == null)
-        {
-            player.AddComponent<PlayerPickupInteractor>();
-        }
+        GameplayHudBootstrap.BindAll();
     }
 
     static void CreateSign(Transform parent, string name, Vector3 position, string text)

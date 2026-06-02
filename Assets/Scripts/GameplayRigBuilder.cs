@@ -114,65 +114,7 @@ public static class GameplayRigBuilder
 
     static void EnsureGameplayHud()
     {
-        var hudGo = GameObject.Find("GameplayHUD");
-        if (hudGo == null)
-        {
-            hudGo = new GameObject("GameplayHUD", typeof(RectTransform));
-        }
-
-        if (hudGo.GetComponent<RectTransform>() == null)
-        {
-            hudGo.AddComponent<RectTransform>();
-        }
-
-        var hud = hudGo.GetComponent<PlayerHUD>();
-        if (hud == null)
-        {
-            hud = hudGo.AddComponent<PlayerHUD>();
-        }
-
-        var buffHud = hudGo.GetComponent<PlayerBuffHud>();
-        if (buffHud == null)
-        {
-            buffHud = hudGo.AddComponent<PlayerBuffHud>();
-        }
-
-        var inventoryHud = hudGo.GetComponent<PlayerInventoryHud>();
-        if (inventoryHud == null)
-        {
-            inventoryHud = hudGo.AddComponent<PlayerInventoryHud>();
-        }
-
-        hud.RebuildUi();
-        buffHud.RebuildUi();
-        inventoryHud.RebuildUi();
-
-        var player = GameObject.Find("Player");
-        var stats = player != null ? player.GetComponent<PlayerStats>() : null;
-        var score = player != null ? player.GetComponent<GameScore>() : null;
-        var buffController = player != null ? player.GetComponent<PlayerBuffController>() : null;
-        var inventory = player != null ? player.GetComponent<PlayerInventory>() : null;
-        var pickupInteractor = player != null ? player.GetComponent<PlayerPickupInteractor>() : null;
-        if (stats != null)
-        {
-            hud.BindTo(stats, score);
-        }
-
-        if (buffController != null)
-        {
-            buffHud.BindTo(buffController);
-        }
-
-        if (inventory != null)
-        {
-            inventoryHud.BindTo(inventory, pickupInteractor);
-        }
-
-        var rect = hudGo.GetComponent<RectTransform>();
-        if (rect != null)
-        {
-            rect.localScale = Vector3.one;
-        }
+        GameplayHudBootstrap.EnsureGameplayHud();
     }
 
     static void RemoveDuplicateComponents<T>(GameObject target) where T : Component

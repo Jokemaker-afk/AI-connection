@@ -45,13 +45,22 @@ public class PlayerHUD : MonoBehaviour
         UnsubscribeStats();
     }
 
+    void Start()
+    {
+        if (NeedsBuildUi())
+        {
+            RebuildUi();
+        }
+        else
+        {
+            GameplayUiUtility.EnsureRootScale(GetComponent<RectTransform>());
+            RefreshBars();
+        }
+    }
+
     void LateUpdate()
     {
-        var rect = GetComponent<RectTransform>();
-        if (rect != null && rect.localScale.sqrMagnitude < 0.01f)
-        {
-            rect.localScale = Vector3.one;
-        }
+        GameplayUiUtility.EnsureRootScale(GetComponent<RectTransform>());
     }
 
     void Update()
@@ -195,14 +204,7 @@ public class PlayerHUD : MonoBehaviour
         var statsPanel = transform.Find("StatsPanel");
         if (statsPanel != null)
         {
-            if (Application.isPlaying)
-            {
-                Destroy(statsPanel.gameObject);
-            }
-            else
-            {
-                DestroyImmediate(statsPanel.gameObject);
-            }
+            GameplayUiUtility.DestroyForRebuild(statsPanel);
         }
 
         healthSlider = null;
@@ -237,7 +239,7 @@ public class PlayerHUD : MonoBehaviour
         var rect = GetComponent<RectTransform>();
         if (rect != null)
         {
-            rect.localScale = Vector3.one;
+            GameplayUiUtility.EnsureRootScale(rect);
         }
     }
 
@@ -273,9 +275,15 @@ public class PlayerHUD : MonoBehaviour
 
     void BuildRuntimeUI()
     {
-        if (transform.Find("StatsPanel") != null)
+        var existingPanel = transform.Find("StatsPanel");
+        if (existingPanel != null)
         {
-            return;
+            if (healthSlider != null && staminaSlider != null && scoreText != null)
+            {
+                return;
+            }
+
+            GameplayUiUtility.DestroyForRebuild(existingPanel);
         }
 
         var canvas = GetComponent<Canvas>();

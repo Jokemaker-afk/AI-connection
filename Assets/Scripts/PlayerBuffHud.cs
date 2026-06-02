@@ -33,14 +33,7 @@ public class PlayerBuffHud : MonoBehaviour
     {
         if (buffBarRoot != null)
         {
-            if (Application.isPlaying)
-            {
-                Destroy(buffBarRoot.gameObject);
-            }
-            else
-            {
-                DestroyImmediate(buffBarRoot.gameObject);
-            }
+            GameplayUiUtility.DestroyForRebuild(buffBarRoot);
         }
 
         slotViews = null;

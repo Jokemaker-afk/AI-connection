@@ -62,6 +62,11 @@ public static class ItemKindUtility
         return kind != ItemKind.None;
     }
 
+    public static bool IsStackable(ItemKind kind)
+    {
+        return IsValid(kind);
+    }
+
     public static Sprite GetIconSprite(ItemKind kind)
     {
         if (!IsValid(kind))

@@ -131,6 +131,11 @@ public class PlayerCameraController : MonoBehaviour
 
     void HandleMouseLook()
     {
+        if (GameplayCursorPolicy.IsInventoryUiOpen)
+        {
+            return;
+        }
+
         if (Mouse.current == null)
         {
             return;
@@ -210,6 +215,18 @@ public class PlayerCameraController : MonoBehaviour
             return;
         }
 
+        if (GameplayCursorPolicy.IsInventoryUiOpen)
+        {
+            if (force || cursorLocked)
+            {
+                cursorLocked = false;
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
+
+            return;
+        }
+
         bool shouldLock = mode == CameraMode.FirstPerson;
         if (force || shouldLock != cursorLocked)
         {
@@ -219,8 +236,18 @@ public class PlayerCameraController : MonoBehaviour
         }
     }
 
+    public void ApplyGameplayCursorLock()
+    {
+        UpdateCursorLock(true);
+    }
+
     void OnDisable()
     {
+        if (GameplayCursorPolicy.IsInventoryUiOpen)
+        {
+            GameplayCursorPolicy.SetInventoryUiOpen(false);
+        }
+
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         ApplyPlayerVisibilityOnDisable();

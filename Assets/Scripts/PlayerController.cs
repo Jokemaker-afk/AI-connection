@@ -99,26 +99,7 @@ public class PlayerController : MonoBehaviour
 
     void BindGameplayHud()
     {
-        var hud = FindFirstObjectByType<PlayerHUD>();
-        if (hud != null)
-        {
-            hud.BindTo(stats, GetComponent<GameScore>());
-        }
-
-        var buffController = GetComponent<PlayerBuffController>();
-        var buffHud = FindFirstObjectByType<PlayerBuffHud>();
-        if (buffHud != null && buffController != null)
-        {
-            buffHud.BindTo(buffController);
-        }
-
-        var inventory = GetComponent<PlayerInventory>();
-        var pickupInteractor = GetComponent<PlayerPickupInteractor>();
-        var inventoryHud = FindFirstObjectByType<PlayerInventoryHud>();
-        if (inventoryHud != null && inventory != null)
-        {
-            inventoryHud.BindTo(inventory, pickupInteractor);
-        }
+        GameplayHudBootstrap.BindAll();
     }
 
     void OnDestroy()

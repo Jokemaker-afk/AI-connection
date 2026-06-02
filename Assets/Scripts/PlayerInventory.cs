@@ -26,7 +26,7 @@ public class PlayerInventory : MonoBehaviour
         int initialAmount = amount;
         int remaining = amount;
 
-        // Minecraft style priority: stack/fill hotbar first, then backpack.
+        // Stack into existing matching slots first (hotbar, then backpack), then empty slots.
         remaining = TryStackIntoSlots(hotbar, kind, remaining);
         remaining = TryStackIntoSlots(backpack, kind, remaining);
         remaining = TryFillEmptySlots(hotbar, kind, remaining);
@@ -64,6 +64,127 @@ public class PlayerInventory : MonoBehaviour
     public InventorySlotData GetBackpackSlot(int index)
     {
         return index >= 0 && index < BackpackSize ? backpack[index] : InventorySlotData.Empty;
+    }
+
+    public InventorySlotData GetSlot(InventorySlotRegion region, int index)
+    {
+        switch (region)
+        {
+            case InventorySlotRegion.Hotbar:
+                return GetHotbarSlot(index);
+            case InventorySlotRegion.Backpack:
+                return GetBackpackSlot(index);
+            default:
+                return InventorySlotData.Empty;
+        }
+    }
+
+    public bool TrySplitFromSlot(InventorySlotRegion region, int index, int amount, out InventorySlotData extracted)
+    {
+        extracted = InventorySlotData.Empty;
+
+        if (!TryGetSlotArray(region, out var slots, out int length) || index < 0 || index >= length || amount <= 0)
+        {
+            return false;
+        }
+
+        InventorySlotData slot = slots[index];
+        if (slot.IsEmpty)
+        {
+            return false;
+        }
+
+        if (!ItemKindUtility.IsStackable(slot.Kind))
+        {
+            amount = slot.Count;
+        }
+        else
+        {
+            amount = Mathf.Clamp(amount, 1, slot.Count);
+        }
+
+        extracted = InventorySlotData.Of(slot.Kind, amount);
+        slot.Count -= amount;
+        slots[index] = slot.Count > 0 ? slot : InventorySlotData.Empty;
+        NormalizeSlotArray(slots);
+        NotifyChanged();
+        return true;
+    }
+
+    public bool TryApplyHeldToSlot(InventorySlotRegion region, int index, ref InventorySlotData held)
+    {
+        if (held.IsEmpty
+            || !TryGetSlotArray(region, out var slots, out int length)
+            || index < 0
+            || index >= length)
+        {
+            return false;
+        }
+
+        InventorySlotData target = slots[index];
+        bool changed = false;
+
+        if (target.IsEmpty)
+        {
+            slots[index] = held;
+            held = InventorySlotData.Empty;
+            changed = true;
+        }
+        else if (target.Kind == held.Kind && target.Count < ItemKindUtility.MaxStackSize)
+        {
+            int space = ItemKindUtility.MaxStackSize - target.Count;
+            int moved = Mathf.Min(space, held.Count);
+            if (moved > 0)
+            {
+                target.Count += moved;
+                held.Count -= moved;
+                slots[index] = target;
+                if (held.Count <= 0)
+                {
+                    held = InventorySlotData.Empty;
+                }
+
+                changed = true;
+            }
+        }
+        else if (target.Kind != held.Kind)
+        {
+            slots[index] = held;
+            held = target;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            NormalizeSlotArray(slots);
+            NotifyChanged();
+        }
+
+        return changed;
+    }
+
+    public bool TryReabsorbHeld(ref InventorySlotData held)
+    {
+        if (held.IsEmpty)
+        {
+            return true;
+        }
+
+        int initial = held.Count;
+        int remaining = held.Count;
+        remaining = TryStackIntoSlots(hotbar, held.Kind, remaining);
+        remaining = TryStackIntoSlots(backpack, held.Kind, remaining);
+        remaining = TryFillEmptySlots(hotbar, held.Kind, remaining);
+        remaining = TryFillEmptySlots(backpack, held.Kind, remaining);
+
+        if (remaining == initial)
+        {
+            return false;
+        }
+
+        held = remaining > 0 ? InventorySlotData.Of(held.Kind, remaining) : InventorySlotData.Empty;
+        NotifyChanged();
+        return remaining <= 0;
     }
 
     public void SetSelectedHotbarIndex(int index)
@@ -122,6 +243,10 @@ public class PlayerInventory : MonoBehaviour
                 changed = true;
             }
         }
+        else if (to.Kind == from.Kind)
+        {
+            return false;
+        }
         else
         {
             toArray[toIndex] = from;
@@ -131,6 +256,12 @@ public class PlayerInventory : MonoBehaviour
 
         if (changed)
         {
+            NormalizeSlotArray(fromArray);
+            if (!ReferenceEquals(fromArray, toArray))
+            {
+                NormalizeSlotArray(toArray);
+            }
+
             NotifyChanged();
         }
 
@@ -161,14 +292,16 @@ public class PlayerInventory : MonoBehaviour
         int remaining = amount;
         for (int i = 0; i < slots.Length && remaining > 0; i++)
         {
-            if (slots[i].Kind != kind || slots[i].Count >= ItemKindUtility.MaxStackSize)
+            if (slots[i].IsEmpty || slots[i].Kind != kind || slots[i].Count >= ItemKindUtility.MaxStackSize)
             {
                 continue;
             }
 
             int space = ItemKindUtility.MaxStackSize - slots[i].Count;
             int moved = Mathf.Min(space, remaining);
-            slots[i].Count += moved;
+            var slot = slots[i];
+            slot.Count += moved;
+            slots[i] = slot;
             remaining -= moved;
         }
 
@@ -198,7 +331,7 @@ public class PlayerInventory : MonoBehaviour
         int remaining = amount;
         for (int i = 0; i < slots.Length && remaining > 0; i++)
         {
-            if (slots[i].Kind != kind || slots[i].Count >= ItemKindUtility.MaxStackSize)
+            if (slots[i].IsEmpty || slots[i].Kind != kind || slots[i].Count >= ItemKindUtility.MaxStackSize)
             {
                 continue;
             }
@@ -223,6 +356,17 @@ public class PlayerInventory : MonoBehaviour
         }
 
         return Mathf.Max(0, remaining);
+    }
+
+    static void NormalizeSlotArray(InventorySlotData[] slots)
+    {
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i].IsEmpty)
+            {
+                slots[i] = InventorySlotData.Empty;
+            }
+        }
     }
 
     void NotifyChanged()

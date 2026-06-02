@@ -16,6 +16,10 @@ public class PlayerInventoryHud : MonoBehaviour
     [SerializeField] PlayerInventory inventory;
     [SerializeField] PlayerPickupInteractor pickupInteractor;
 
+    [Header("Right Click Split")]
+    [SerializeField] float rightClickHoldThreshold = 1.5f;
+    [SerializeField] float rightClickExtractionRate = 8f;
+
     RectTransform hotbarRoot;
     RectTransform backpackRoot;
     RectTransform pickupPromptRoot;
@@ -32,13 +36,38 @@ public class PlayerInventoryHud : MonoBehaviour
     InventorySlotRegion dragFromRegion;
     int dragFromIndex = -1;
 
+    InventorySlotData cursorHeld;
+    bool hasCursorHeld;
+    InventorySlotRegion cursorHeldSourceRegion;
+    int cursorHeldSourceIndex = -1;
+    bool cursorHeldHasSource;
+
+    bool rightClickTracking;
+    float rightClickStartTime;
+    InventorySlotRegion rightClickRegion;
+    int rightClickIndex = -1;
+    bool rightClickLongPressActive;
+    int rightClickLongExtractedTotal;
+
     public bool IsBackpackOpen => backpackOpen;
+    public bool HasCursorHeld => hasCursorHeld;
 
     void Awake()
     {
         EnsureEventSystem();
         BindInventory();
-        BuildUi();
+    }
+
+    void Start()
+    {
+        if (hotbarRoot == null || hotbarSlotViews == null || !HasValidHotbarViews())
+        {
+            BuildUi();
+        }
+
+        BindInventory();
+        SubscribeInventory();
+        RefreshAll();
     }
 
     void OnEnable()
@@ -48,19 +77,16 @@ public class PlayerInventoryHud : MonoBehaviour
         RefreshAll();
     }
 
-    void OnDisable()
-    {
-        UnsubscribeInventory();
-    }
-
     void Update()
     {
         HandleKeyboardInput();
         RefreshPickupPrompt();
+        HandleRightClickExtraction();
 
-        if (isDragging)
+        Vector2 mousePos = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
+        if (isDragging || hasCursorHeld)
         {
-            UpdateDragGhostPosition(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero);
+            UpdateDragGhostPosition(mousePos);
         }
     }
 
@@ -78,6 +104,11 @@ public class PlayerInventoryHud : MonoBehaviour
         backpackSlotViews = null;
         BuildUi();
         RefreshAll();
+
+        if (backpackOpen)
+        {
+            BringInventoryUiToFront();
+        }
     }
 
     public void BindTo(PlayerInventory playerInventory, PlayerPickupInteractor interactor = null)
@@ -151,6 +182,21 @@ public class PlayerInventoryHud : MonoBehaviour
                 break;
             }
         }
+
+        if (Mouse.current != null && !backpackOpen)
+        {
+            float scroll = Mouse.current.scroll.y.ReadValue();
+            if (scroll > 0f)
+            {
+                int next = (inventory.SelectedHotbarIndex + PlayerInventory.HotbarSize - 1) % PlayerInventory.HotbarSize;
+                inventory.SetSelectedHotbarIndex(next);
+            }
+            else if (scroll < 0f)
+            {
+                int next = (inventory.SelectedHotbarIndex + 1) % PlayerInventory.HotbarSize;
+                inventory.SetSelectedHotbarIndex(next);
+            }
+        }
     }
 
     static bool WasDigitPressed(int index)
@@ -173,17 +219,57 @@ public class PlayerInventoryHud : MonoBehaviour
     void SetBackpackOpen(bool open)
     {
         backpackOpen = open;
+        GameplayCursorPolicy.SetInventoryUiOpen(open);
+
         if (backpackRoot != null)
         {
             backpackRoot.gameObject.SetActive(open);
         }
 
+        if (open)
+        {
+            BringInventoryUiToFront();
+        }
+
         if (!open)
         {
             EndDrag(false);
+            ReturnCursorHeldSafely();
+            CancelRightClickTracking();
         }
 
         RefreshAll();
+    }
+
+    void BringInventoryUiToFront()
+    {
+        if (hotbarRoot != null)
+        {
+            hotbarRoot.SetAsLastSibling();
+        }
+
+        if (pickupPromptRoot != null)
+        {
+            pickupPromptRoot.SetAsLastSibling();
+        }
+
+        if (dragGhost != null)
+        {
+            dragGhost.SetAsLastSibling();
+        }
+    }
+
+    void OnDisable()
+    {
+        UnsubscribeInventory();
+        ReturnCursorHeldSafely();
+        CancelRightClickTracking();
+
+        if (backpackOpen)
+        {
+            backpackOpen = false;
+            GameplayCursorPolicy.SetInventoryUiOpen(false);
+        }
     }
 
     void BuildUi()
@@ -202,12 +288,14 @@ public class PlayerInventoryHud : MonoBehaviour
         {
             canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 20;
 
             var scaler = gameObject.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
+        }
 
+        if (GetComponent<GraphicRaycaster>() == null)
+        {
             gameObject.AddComponent<GraphicRaycaster>();
         }
     }
@@ -219,7 +307,14 @@ public class PlayerInventoryHud : MonoBehaviour
         {
             hotbarRoot = existing as RectTransform;
             CacheHotbarViews();
-            return;
+            if (HasValidHotbarViews())
+            {
+                return;
+            }
+
+            DestroyPanel("HotbarPanel");
+            hotbarRoot = null;
+            hotbarSlotViews = null;
         }
 
         var panelGo = new GameObject("HotbarPanel", typeof(RectTransform));
@@ -255,8 +350,21 @@ public class PlayerInventoryHud : MonoBehaviour
         if (existing != null)
         {
             backpackRoot = existing as RectTransform;
+            var existingBackdrop = backpackRoot.GetComponent<Image>();
+            if (existingBackdrop != null)
+            {
+                existingBackdrop.raycastTarget = false;
+            }
+
             CacheBackpackViews();
-            return;
+            if (HasValidBackpackViews())
+            {
+                return;
+            }
+
+            DestroyPanel("BackpackPanel");
+            backpackRoot = null;
+            backpackSlotViews = null;
         }
 
         var panelGo = new GameObject("BackpackPanel", typeof(RectTransform), typeof(Image));
@@ -268,7 +376,7 @@ public class PlayerInventoryHud : MonoBehaviour
 
         var backdrop = panelGo.GetComponent<Image>();
         backdrop.color = new Color(0f, 0f, 0f, 0.55f);
-        backdrop.raycastTarget = true;
+        backdrop.raycastTarget = false;
 
         float gridWidth = BackpackColumns * SlotSize + (BackpackColumns - 1) * SlotSpacing;
         float gridHeight = BackpackRows * SlotSize + (BackpackRows - 1) * SlotSpacing;
@@ -301,6 +409,7 @@ public class PlayerInventoryHud : MonoBehaviour
         title.fontStyle = FontStyle.Bold;
         title.alignment = TextAnchor.MiddleCenter;
         title.color = Color.white;
+        title.raycastTarget = false;
 
         var hintGo = new GameObject("Hint", typeof(RectTransform), typeof(Text));
         hintGo.transform.SetParent(windowGo.transform, false);
@@ -313,10 +422,11 @@ public class PlayerInventoryHud : MonoBehaviour
 
         var hint = hintGo.GetComponent<Text>();
         hint.font = GetFont();
-        hint.text = "拖拽物品到目标格：同类自动堆叠，异类交换，按 B 关闭";
+        hint.text = "左键拖拽移动 · 右键拆分取物 · 同类自动堆叠 · 按 B 关闭";
         hint.fontSize = 14;
         hint.alignment = TextAnchor.MiddleCenter;
         hint.color = new Color(0.82f, 0.86f, 0.92f, 0.9f);
+        hint.raycastTarget = false;
 
         var gridGo = new GameObject("Grid", typeof(RectTransform));
         gridGo.transform.SetParent(windowGo.transform, false);
@@ -427,7 +537,52 @@ public class PlayerInventoryHud : MonoBehaviour
         dragGhostCount.color = Color.white;
         dragGhostCount.raycastTarget = false;
 
+        var ghostGroup = ghostGo.GetComponent<CanvasGroup>();
+        if (ghostGroup == null)
+        {
+            ghostGroup = ghostGo.AddComponent<CanvasGroup>();
+        }
+
+        ghostGroup.blocksRaycasts = false;
+        ghostGroup.interactable = false;
+
         ghostGo.SetActive(false);
+    }
+
+    bool HasValidHotbarViews()
+    {
+        if (hotbarSlotViews == null || hotbarSlotViews.Length != HotbarColumns)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < hotbarSlotViews.Length; i++)
+        {
+            if (hotbarSlotViews[i] == null || !hotbarSlotViews[i].HasVisualRefs())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool HasValidBackpackViews()
+    {
+        if (backpackSlotViews == null || backpackSlotViews.Length != BackpackColumns * BackpackRows)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < backpackSlotViews.Length; i++)
+        {
+            if (backpackSlotViews[i] == null || !backpackSlotViews[i].HasVisualRefs())
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void CacheHotbarViews()
@@ -435,11 +590,20 @@ public class PlayerInventoryHud : MonoBehaviour
         hotbarSlotViews = new InventorySlotView[HotbarColumns];
         for (int i = 0; i < HotbarColumns; i++)
         {
-            var child = hotbarRoot.Find($"HotbarSlot_{i}");
-            if (child != null)
+            var child = hotbarRoot != null ? hotbarRoot.Find($"HotbarSlot_{i}") : null;
+            if (child == null)
             {
-                hotbarSlotViews[i] = child.GetComponent<InventorySlotView>();
+                continue;
             }
+
+            var view = child.GetComponent<InventorySlotView>();
+            if (view == null)
+            {
+                view = child.gameObject.AddComponent<InventorySlotView>();
+            }
+
+            view.Configure(InventorySlotRegion.Hotbar, i, i + 1, this);
+            hotbarSlotViews[i] = view;
         }
     }
 
@@ -455,10 +619,19 @@ public class PlayerInventoryHud : MonoBehaviour
         for (int i = 0; i < backpackSlotViews.Length; i++)
         {
             var child = grid.Find($"BackpackSlot_{i}");
-            if (child != null)
+            if (child == null)
             {
-                backpackSlotViews[i] = child.GetComponent<InventorySlotView>();
+                continue;
             }
+
+            var view = child.GetComponent<InventorySlotView>();
+            if (view == null)
+            {
+                view = child.gameObject.AddComponent<InventorySlotView>();
+            }
+
+            view.Configure(InventorySlotRegion.Backpack, i, -1, this);
+            backpackSlotViews[i] = view;
         }
     }
 
@@ -467,6 +640,7 @@ public class PlayerInventoryHud : MonoBehaviour
         RefreshSlots();
         RefreshHotbarSelection();
         RefreshPickupPrompt();
+        UpdateCursorGhostVisual();
     }
 
     void RefreshSlots()
@@ -528,10 +702,26 @@ public class PlayerInventoryHud : MonoBehaviour
         pickupPromptRoot.gameObject.SetActive(false);
     }
 
-    internal void HandleSlotPointerClick(InventorySlotRegion region, int index)
+    internal void HandleSlotPointerClick(InventorySlotRegion region, int index, PointerEventData eventData)
     {
-        if (inventory == null)
+        if (inventory == null || !backpackOpen)
         {
+            if (region == InventorySlotRegion.Hotbar && inventory != null)
+            {
+                inventory.SetSelectedHotbarIndex(index);
+            }
+
+            return;
+        }
+
+        if (eventData != null && eventData.button == PointerEventData.InputButton.Right)
+        {
+            return;
+        }
+
+        if (hasCursorHeld)
+        {
+            TryPlaceCursorHeld(region, index);
             return;
         }
 
@@ -541,9 +731,271 @@ public class PlayerInventoryHud : MonoBehaviour
         }
     }
 
+    internal void HandleSlotPointerDown(InventorySlotRegion region, int index, PointerEventData eventData)
+    {
+        if (!backpackOpen || inventory == null || eventData == null)
+        {
+            return;
+        }
+
+        if (eventData.button != PointerEventData.InputButton.Right)
+        {
+            return;
+        }
+
+        InventorySlotData slot = GetSlot(region, index);
+        if (slot.IsEmpty || !ItemKindUtility.IsStackable(slot.Kind))
+        {
+            return;
+        }
+
+        if (hasCursorHeld && cursorHeld.Kind != slot.Kind)
+        {
+            return;
+        }
+
+        rightClickTracking = true;
+        rightClickLongPressActive = false;
+        rightClickLongExtractedTotal = 0;
+        rightClickStartTime = Time.unscaledTime;
+        rightClickRegion = region;
+        rightClickIndex = index;
+    }
+
+    internal void HandleSlotPointerUp(InventorySlotRegion region, int index, PointerEventData eventData)
+    {
+        // Release is handled centrally in HandleRightClickExtraction().
+    }
+
+    void HandleRightClickExtraction()
+    {
+        if (!backpackOpen || inventory == null || Mouse.current == null)
+        {
+            return;
+        }
+
+        if (rightClickTracking && Mouse.current.rightButton.isPressed)
+        {
+            float heldTime = Time.unscaledTime - rightClickStartTime;
+            if (heldTime >= rightClickHoldThreshold)
+            {
+                if (!rightClickLongPressActive)
+                {
+                    rightClickLongPressActive = true;
+                }
+
+                int targetTotal = CalculateLongPressTargetExtract(heldTime);
+                int delta = targetTotal - rightClickLongExtractedTotal;
+                if (delta > 0)
+                {
+                    int extracted = TryExtractToCursor(rightClickRegion, rightClickIndex, delta);
+                    rightClickLongExtractedTotal += extracted;
+                }
+            }
+        }
+
+        if (rightClickTracking && Mouse.current.rightButton.wasReleasedThisFrame)
+        {
+            FinishRightClickExtraction();
+        }
+    }
+
+    void FinishRightClickExtraction()
+    {
+        if (!rightClickTracking)
+        {
+            return;
+        }
+
+        InventorySlotRegion sourceRegion = rightClickRegion;
+        int sourceIndex = rightClickIndex;
+        bool wasLongPress = rightClickLongPressActive;
+        CancelRightClickTracking();
+
+        if (!wasLongPress)
+        {
+            TryExtractToCursor(sourceRegion, sourceIndex, 1);
+        }
+    }
+
+    int TryExtractToCursor(InventorySlotRegion region, int index, int amount)
+    {
+        if (inventory == null || amount <= 0)
+        {
+            return 0;
+        }
+
+        InventorySlotData slot = GetSlot(region, index);
+        if (slot.IsEmpty)
+        {
+            return 0;
+        }
+
+        if (!ItemKindUtility.IsStackable(slot.Kind))
+        {
+            return 0;
+        }
+
+        if (hasCursorHeld && cursorHeld.Kind != slot.Kind)
+        {
+            return 0;
+        }
+
+        if (hasCursorHeld)
+        {
+            int space = ItemKindUtility.MaxStackSize - cursorHeld.Count;
+            amount = Mathf.Min(amount, space);
+        }
+
+        amount = Mathf.Min(amount, slot.Count);
+        if (amount <= 0)
+        {
+            return 0;
+        }
+
+        if (!inventory.TrySplitFromSlot(region, index, amount, out InventorySlotData extracted))
+        {
+            return 0;
+        }
+
+        if (!hasCursorHeld)
+        {
+            cursorHeld = extracted;
+            hasCursorHeld = true;
+            cursorHeldSourceRegion = region;
+            cursorHeldSourceIndex = index;
+            cursorHeldHasSource = true;
+        }
+        else
+        {
+            var held = cursorHeld;
+            held.Count += extracted.Count;
+            cursorHeld = held;
+        }
+
+        UpdateCursorGhostVisual();
+        RefreshAll();
+        return extracted.Count;
+    }
+
+    int CalculateLongPressTargetExtract(float heldTime)
+    {
+        if (heldTime < rightClickHoldThreshold)
+        {
+            return 0;
+        }
+
+        int target = 1 + Mathf.FloorToInt((heldTime - rightClickHoldThreshold) * rightClickExtractionRate);
+        return Mathf.Clamp(target, 1, ItemKindUtility.MaxStackSize);
+    }
+
+    void CancelRightClickTracking()
+    {
+        rightClickTracking = false;
+        rightClickLongPressActive = false;
+        rightClickLongExtractedTotal = 0;
+        rightClickIndex = -1;
+    }
+
+    void TryPlaceCursorHeld(InventorySlotRegion region, int index)
+    {
+        if (!hasCursorHeld || inventory == null)
+        {
+            return;
+        }
+
+        InventorySlotData held = cursorHeld;
+        if (inventory.TryApplyHeldToSlot(region, index, ref held))
+        {
+            cursorHeld = held;
+            hasCursorHeld = !held.IsEmpty;
+            if (!hasCursorHeld)
+            {
+                ClearCursorHeldSource();
+            }
+
+            UpdateCursorGhostVisual();
+            RefreshAll();
+        }
+    }
+
+    void ReturnCursorHeldSafely()
+    {
+        if (!hasCursorHeld || inventory == null)
+        {
+            ClearCursorHeld();
+            return;
+        }
+
+        InventorySlotData held = cursorHeld;
+
+        if (cursorHeldHasSource && cursorHeldSourceIndex >= 0)
+        {
+            inventory.TryApplyHeldToSlot(cursorHeldSourceRegion, cursorHeldSourceIndex, ref held);
+        }
+
+        if (!held.IsEmpty)
+        {
+            inventory.TryReabsorbHeld(ref held);
+        }
+
+        ClearCursorHeld();
+        RefreshAll();
+    }
+
+    void ClearCursorHeld()
+    {
+        cursorHeld = InventorySlotData.Empty;
+        hasCursorHeld = false;
+        ClearCursorHeldSource();
+        UpdateCursorGhostVisual();
+    }
+
+    void ClearCursorHeldSource()
+    {
+        cursorHeldHasSource = false;
+        cursorHeldSourceIndex = -1;
+    }
+
+    void UpdateCursorGhostVisual()
+    {
+        if (dragGhost == null || dragGhostIcon == null || dragGhostCount == null)
+        {
+            return;
+        }
+
+        InventorySlotData display = isDragging
+            ? GetSlot(dragFromRegion, dragFromIndex)
+            : hasCursorHeld ? cursorHeld : InventorySlotData.Empty;
+
+        if (display.IsEmpty)
+        {
+            if (!isDragging)
+            {
+                dragGhost.gameObject.SetActive(false);
+            }
+
+            return;
+        }
+
+        dragGhostIcon.sprite = ItemKindUtility.GetIconSprite(display.Kind);
+        dragGhostIcon.color = Color.white;
+
+        if (hasCursorHeld && !isDragging)
+        {
+            dragGhostCount.text = cursorHeld.Count.ToString();
+        }
+        else
+        {
+            dragGhostCount.text = display.Count > 1 ? display.Count.ToString() : string.Empty;
+        }
+
+        dragGhost.gameObject.SetActive(true);
+    }
+
     internal void HandleSlotBeginDrag(InventorySlotRegion region, int index, PointerEventData eventData)
     {
-        if (!backpackOpen || inventory == null)
+        if (!backpackOpen || inventory == null || hasCursorHeld)
         {
             return;
         }
@@ -577,17 +1029,34 @@ public class PlayerInventoryHud : MonoBehaviour
 
     internal void HandleSlotDrop(InventorySlotRegion toRegion, int toIndex, PointerEventData eventData)
     {
-        if (!isDragging || inventory == null)
+        if (inventory == null)
         {
             return;
         }
 
-        inventory.TryMoveOrSwapSlot(dragFromRegion, dragFromIndex, toRegion, toIndex);
+        if (hasCursorHeld)
+        {
+            TryPlaceCursorHeld(toRegion, toIndex);
+            return;
+        }
+
+        if (!isDragging)
+        {
+            return;
+        }
+
+        if (inventory.TryMoveOrSwapSlot(dragFromRegion, dragFromIndex, toRegion, toIndex))
+        {
+            EndDrag(true);
+        }
     }
 
     internal void HandleSlotEndDrag(PointerEventData eventData)
     {
-        EndDrag(true);
+        if (isDragging)
+        {
+            EndDrag(true);
+        }
     }
 
     InventorySlotData GetSlot(InventorySlotRegion region, int index)
@@ -607,9 +1076,14 @@ public class PlayerInventoryHud : MonoBehaviour
     {
         isDragging = false;
         dragFromIndex = -1;
-        if (dragGhost != null)
+
+        if (!hasCursorHeld && dragGhost != null)
         {
             dragGhost.gameObject.SetActive(false);
+        }
+        else
+        {
+            UpdateCursorGhostVisual();
         }
 
         if (refresh)
@@ -636,25 +1110,24 @@ public class PlayerInventoryHud : MonoBehaviour
             return;
         }
 
-        if (Application.isPlaying)
-        {
-            Destroy(panel.gameObject);
-        }
-        else
-        {
-            DestroyImmediate(panel.gameObject);
-        }
+        GameplayUiUtility.DestroyForRebuild(panel);
     }
 
     static void EnsureEventSystem()
     {
-        if (FindFirstObjectByType<EventSystem>() != null)
+        var eventSystem = FindFirstObjectByType<EventSystem>();
+        if (eventSystem == null)
         {
+            var eventSystemGo = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+            DontDestroyOnLoad(eventSystemGo);
             return;
         }
 
-        var eventSystemGo = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
-        DontDestroyOnLoad(eventSystemGo);
+        if (eventSystem.GetComponent<InputSystemUIInputModule>() == null
+            && eventSystem.GetComponent<StandaloneInputModule>() == null)
+        {
+            eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+        }
     }
 
     static Font GetFont()
@@ -693,16 +1166,18 @@ public class PlayerInventoryHud : MonoBehaviour
         rect.offsetMax = new Vector2(-padding, -padding);
     }
 
-    sealed class InventorySlotView : MonoBehaviour, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
+    sealed class InventorySlotView : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IPointerUpHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
     {
         Image iconImage;
         Image borderImage;
+        Image selectionOutline;
         Text countText;
 
         InventorySlotRegion region;
         int index;
         PlayerInventoryHud owner;
         bool hotbarSelected;
+        bool visualsBuilt;
 
         public static InventorySlotView Create(
             Transform parent,
@@ -745,22 +1220,68 @@ public class PlayerInventoryHud : MonoBehaviour
             return view;
         }
 
+        public void Configure(InventorySlotRegion slotRegion, int slotIndex, int displayIndex, PlayerInventoryHud hud)
+        {
+            region = slotRegion;
+            index = slotIndex;
+            owner = hud;
+            EnsureVisualHierarchy(displayIndex);
+        }
+
+        public bool HasVisualRefs()
+        {
+            EnsureRefs();
+            return iconImage != null && borderImage != null && countText != null;
+        }
+
+        void EnsureVisualHierarchy(int displayIndex)
+        {
+            if (visualsBuilt && HasVisualRefs())
+            {
+                return;
+            }
+
+            Build(displayIndex);
+        }
+
         void Build(int displayIndex)
         {
-            var bg = CreateImage(transform, "Background", new Color(0.12f, 0.14f, 0.18f, 0.95f));
-            StretchFull(bg.rectTransform);
-            bg.raycastTarget = true;
+            if (transform.Find("Background") == null)
+            {
+                var bg = CreateImage(transform, "Background", new Color(0.12f, 0.14f, 0.18f, 0.95f));
+                StretchFull(bg.rectTransform);
+                bg.raycastTarget = true;
+            }
 
-            iconImage = CreateImage(transform, "Icon", new Color(1f, 1f, 1f, 0f));
-            StretchWithPadding(iconImage.rectTransform, 6f);
-            iconImage.raycastTarget = false;
-            iconImage.preserveAspect = true;
+            if (region == InventorySlotRegion.Hotbar && transform.Find("SelectionOutline") == null)
+            {
+                selectionOutline = CreateImage(transform, "SelectionOutline", Color.black);
+                var outlineRect = selectionOutline.rectTransform;
+                outlineRect.anchorMin = Vector2.zero;
+                outlineRect.anchorMax = Vector2.one;
+                outlineRect.offsetMin = new Vector2(-3f, -3f);
+                outlineRect.offsetMax = new Vector2(3f, 3f);
+                selectionOutline.raycastTarget = false;
+                selectionOutline.gameObject.SetActive(false);
+                selectionOutline.transform.SetAsFirstSibling();
+            }
 
-            borderImage = CreateImage(transform, "Border", new Color(1f, 1f, 1f, 0.12f));
-            StretchFull(borderImage.rectTransform);
-            borderImage.raycastTarget = false;
+            if (transform.Find("Icon") == null)
+            {
+                iconImage = CreateImage(transform, "Icon", new Color(1f, 1f, 1f, 0f));
+                StretchWithPadding(iconImage.rectTransform, 6f);
+                iconImage.raycastTarget = false;
+                iconImage.preserveAspect = true;
+            }
 
-            if (displayIndex > 0)
+            if (transform.Find("Border") == null)
+            {
+                borderImage = CreateImage(transform, "Border", new Color(1f, 1f, 1f, 0.12f));
+                StretchFull(borderImage.rectTransform);
+                borderImage.raycastTarget = false;
+            }
+
+            if (displayIndex > 0 && transform.Find("Index") == null)
             {
                 var indexGo = new GameObject("Index", typeof(RectTransform), typeof(Text));
                 indexGo.transform.SetParent(transform, false);
@@ -780,22 +1301,28 @@ public class PlayerInventoryHud : MonoBehaviour
                 indexText.raycastTarget = false;
             }
 
-            var countGo = new GameObject("Count", typeof(RectTransform), typeof(Text));
-            countGo.transform.SetParent(transform, false);
-            var countRect = countGo.GetComponent<RectTransform>();
-            countRect.anchorMin = new Vector2(1f, 0f);
-            countRect.anchorMax = new Vector2(1f, 0f);
-            countRect.pivot = new Vector2(1f, 0f);
-            countRect.anchoredPosition = new Vector2(-4f, 2f);
-            countRect.sizeDelta = new Vector2(24f, 16f);
+            if (transform.Find("Count") == null)
+            {
+                var countGo = new GameObject("Count", typeof(RectTransform), typeof(Text));
+                countGo.transform.SetParent(transform, false);
+                var countRect = countGo.GetComponent<RectTransform>();
+                countRect.anchorMin = new Vector2(1f, 0f);
+                countRect.anchorMax = new Vector2(1f, 0f);
+                countRect.pivot = new Vector2(1f, 0f);
+                countRect.anchoredPosition = new Vector2(-4f, 2f);
+                countRect.sizeDelta = new Vector2(24f, 16f);
 
-            countText = countGo.GetComponent<Text>();
-            countText.font = GetFont();
-            countText.fontSize = 13;
-            countText.fontStyle = FontStyle.Bold;
-            countText.alignment = TextAnchor.LowerRight;
-            countText.color = Color.white;
-            countText.raycastTarget = false;
+                countText = countGo.GetComponent<Text>();
+                countText.font = GetFont();
+                countText.fontSize = 13;
+                countText.fontStyle = FontStyle.Bold;
+                countText.alignment = TextAnchor.LowerRight;
+                countText.color = Color.white;
+                countText.raycastTarget = false;
+            }
+
+            EnsureRefs();
+            visualsBuilt = true;
         }
 
         public void ApplySlot(InventorySlotData slot)
@@ -815,18 +1342,26 @@ public class PlayerInventoryHud : MonoBehaviour
                 countText.text = slot.Count > 1 ? slot.Count.ToString() : string.Empty;
             }
 
-            borderImage.color = hotbarSelected
-                ? new Color(1f, 1f, 1f, 0.92f)
-                : new Color(1f, 1f, 1f, 0.12f);
+            borderImage.color = new Color(1f, 1f, 1f, 0.12f);
+            UpdateSelectionOutline();
         }
 
         public void SetHotbarSelected(bool selected)
         {
             EnsureRefs();
             hotbarSelected = selected;
-            borderImage.color = selected
-                ? new Color(1f, 1f, 1f, 0.92f)
-                : new Color(1f, 1f, 1f, 0.12f);
+            UpdateSelectionOutline();
+        }
+
+        void UpdateSelectionOutline()
+        {
+            if (selectionOutline == null)
+            {
+                return;
+            }
+
+            bool showOutline = hotbarSelected && region == InventorySlotRegion.Hotbar;
+            selectionOutline.gameObject.SetActive(showOutline);
         }
 
         void EnsureRefs()
@@ -841,6 +1376,11 @@ public class PlayerInventoryHud : MonoBehaviour
                 borderImage = transform.Find("Border")?.GetComponent<Image>();
             }
 
+            if (selectionOutline == null)
+            {
+                selectionOutline = transform.Find("SelectionOutline")?.GetComponent<Image>();
+            }
+
             if (countText == null)
             {
                 countText = transform.Find("Count")?.GetComponent<Text>();
@@ -849,7 +1389,17 @@ public class PlayerInventoryHud : MonoBehaviour
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            owner?.HandleSlotPointerClick(region, index);
+            owner?.HandleSlotPointerClick(region, index, eventData);
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            owner?.HandleSlotPointerDown(region, index, eventData);
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            owner?.HandleSlotPointerUp(region, index, eventData);
         }
 
         public void OnBeginDrag(PointerEventData eventData)
