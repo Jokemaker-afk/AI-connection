@@ -398,54 +398,26 @@ public class WorldPickupItem : MonoBehaviour
 
 
 
-    public static WorldPickupItem Create(Transform parent, string name, Vector3 position, ItemKind kind, int pickupAmount = 1)
-
+    public void Configure(ItemKind kind, int pickupAmount)
     {
+        itemKind = kind;
+        amount = Mathf.Max(1, pickupAmount);
+        basePosition = transform.position;
+        RefreshLabel();
+    }
 
-        var root = new GameObject(name);
+    /// <summary>Legacy wrapper — prefer ItemModuleFactory.SpawnWorldPickup.</summary>
+    public static WorldPickupItem Create(Transform parent, string name, Vector3 position, ItemKind kind, int pickupAmount = 1)
+    {
+        ItemModuleValidation.WarnLegacyCreationPath(nameof(WorldPickupItem.Create), kind);
+        GameObject root = ItemModuleFactory.SpawnWorldPickup(kind, position, pickupAmount, parent);
+        if (root == null)
+        {
+            return null;
+        }
 
-        root.transform.SetParent(parent, false);
-
-        root.transform.position = position;
-
-
-
-        ItemVisualBuilder.CreatePickupVisual(root.transform, kind, Vector3.one * 0.55f);
-
-
-
-        var pickup = root.AddComponent<WorldPickupItem>();
-
-        pickup.itemKind = kind;
-
-        pickup.amount = pickupAmount;
-
-        pickup.basePosition = position;
-
-        pickup.EnsureInteractionPoint();
-
-
-
-        ItemWorldLabel.Create(root.transform, pickup.DisplayNameChinese, Vector3.up * 0.55f);
-
-
-
-        var collider = root.AddComponent<SphereCollider>();
-
-        collider.radius = pickup.pickupRadius;
-
-        collider.isTrigger = true;
-
-
-
-        pickup.EnsureSolidRaycastCollider();
-
-
-
-        GameplayLayers.TrySetPickupLayer(root);
-
-        return pickup;
-
+        root.name = name;
+        return root.GetComponent<WorldPickupItem>();
     }
 
 }

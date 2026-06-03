@@ -62,7 +62,7 @@ public class PlayerPlacementController : MonoBehaviour
             ray,
             activeItem,
             out Vector3 position,
-            out _,
+            out Vector3 surfaceNormal,
             out Collider supportCollider);
 
         float placementRange = targeting != null ? targeting.MaxPlacementDistance : maxPlacementDistance;
@@ -142,7 +142,7 @@ public class PlayerPlacementController : MonoBehaviour
             ray,
             activeItem,
             out Vector3 resolvedPosition,
-            out _,
+            out Vector3 surfaceNormal,
             out Collider supportCollider);
 
         position = resolvedPosition;
@@ -166,7 +166,7 @@ public class PlayerPlacementController : MonoBehaviour
             return;
         }
 
-        GameObject placed = PlacedObjectBuilder.SpawnPlacedObject(activeItem, position, Quaternion.identity);
+        GameObject placed = ItemModuleFactory.SpawnPlacedObject(activeItem, position, Quaternion.identity);
         if (placed == null)
         {
             inventory.TryAddItem(activeItem, 1);

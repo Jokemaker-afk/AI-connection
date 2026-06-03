@@ -11,6 +11,15 @@ public static class LevelSetupMenu
     const string Level4ScenePath = "Assets/Scenes/Level4.unity";
     const string Level5ScenePath = "Assets/Scenes/Level5.unity";
     const string Level6ScenePath = "Assets/Scenes/Level6.unity";
+    const string Level7ScenePath = "Assets/Scenes/Level7.unity";
+
+    [MenuItem("Tools/Setup Gameplay Foundation In Current Scene")]
+    public static void SetupGameplayFoundationInCurrentScene()
+    {
+        GameplayFoundationBootstrap.EnsureForActiveScene();
+        EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+        Debug.Log("Gameplay foundation bootstrapped in the current scene.");
+    }
 
     [MenuItem("Tools/Setup Level 1 (Score Win)")]
     public static void SetupLevel1()
@@ -199,6 +208,44 @@ public static class LevelSetupMenu
         Debug.Log("Level 6 placeholder scene created at Assets/Scenes/Level6.unity");
     }
 
+    [MenuItem("Tools/Setup Level 6 (Handheld Tool Tutorial)")]
+    public static void SetupLevel6()
+    {
+        EnsureSceneOpen(Level6ScenePath);
+
+        var arena = GameObject.Find("Level6Arena");
+        if (arena == null)
+        {
+            Level6PlaceholderBuilder.Generate(true);
+        }
+
+        EditorSceneManager.SaveOpenScenes();
+        Debug.Log("Level 6 configured: mine, chop, repair tasks then Y near portal to enter Level7.");
+    }
+
+    [MenuItem("Tools/Create Level 7 Scene (Placeholder)")]
+    public static void CreateLevel7Scene()
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+
+        foreach (var extra in Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None))
+        {
+            if (extra.name == "Main Camera" || extra.name == "Directional Light")
+            {
+                Object.DestroyImmediate(extra);
+            }
+        }
+
+        GameplayRigBuilder.EnsureCoreGameplayObjects(new Vector3(0f, 0f, -2f));
+        Level7PlaceholderBuilder.Generate(true);
+
+        EditorSceneManager.SaveScene(scene, Level7ScenePath);
+        AddSceneToBuildSettings(Level7ScenePath);
+        EnsureAllLevelsInBuildSettings();
+
+        Debug.Log("Level 7 placeholder scene created at Assets/Scenes/Level7.unity");
+    }
+
     static void EnsureLevel4CollectibleSystems()
     {
         var systemsGo = GameObject.Find("Level4Systems");
@@ -356,6 +403,7 @@ public static class LevelSetupMenu
         AddSceneToBuildSettings(Level4ScenePath);
         AddSceneToBuildSettings(Level5ScenePath);
         AddSceneToBuildSettings(Level6ScenePath);
+        AddSceneToBuildSettings(Level7ScenePath);
     }
 
     static void AddSceneToBuildSettings(string scenePath)

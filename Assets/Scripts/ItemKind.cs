@@ -41,6 +41,7 @@ public enum ItemKind
     CraftingTable,
     StoneAxe,
     StonePickaxe,
+    RepairTool,
     SimpleBackpack,
     Campfire,
     Furnace,
@@ -287,5 +288,45 @@ public static class ItemKindUtility
             new Rect(0f, 0f, size, size),
             new Vector2(0.5f, 0.5f),
             100f);
+    }
+
+    public static bool IsHandheldTool(ItemKind kind)
+    {
+        return ItemCatalog.TryGet(kind, out ItemData data) && data.IsHandheldTool;
+    }
+
+    public static ToolKind GetToolKind(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsHandheldTool)
+        {
+            return data.HandheldTool.ToolKind;
+        }
+
+        return ToolKind.None;
+    }
+
+    public static HandheldToolProfile GetHandheldToolProfile(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsHandheldTool)
+        {
+            return data.HandheldTool;
+        }
+
+        return default;
+    }
+
+    public static string GetRequiredToolPrompt(ToolKind required)
+    {
+        switch (required)
+        {
+            case ToolKind.Pickaxe:
+                return "需要石镐";
+            case ToolKind.Axe:
+                return "需要石斧";
+            case ToolKind.RepairTool:
+                return "需要修理工具";
+            default:
+                return "需要对应工具";
+        }
     }
 }

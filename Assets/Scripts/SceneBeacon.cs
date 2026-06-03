@@ -12,16 +12,41 @@ public class SceneBeacon : MonoBehaviour
     ScenePortal portal;
     bool activated;
 
+    [SerializeField] bool portalLoadOnEnter = true;
+
     public bool IsActivated => activated;
     public string TargetSceneName => targetSceneName;
 
-    public void Configure(Vector3 worldPosition, string sceneName)
+    public void Configure(
+        Vector3 worldPosition,
+        string sceneName,
+        string signText = null,
+        string title = null,
+        string detail = null,
+        bool loadPortalOnEnter = true)
     {
         beaconWorldPosition = worldPosition;
         if (!string.IsNullOrEmpty(sceneName))
         {
             targetSceneName = sceneName;
         }
+
+        if (!string.IsNullOrEmpty(signText))
+        {
+            activeSignText = signText;
+        }
+
+        if (!string.IsNullOrEmpty(title))
+        {
+            activationTitle = title;
+        }
+
+        if (!string.IsNullOrEmpty(detail))
+        {
+            activationDetail = detail;
+        }
+
+        portalLoadOnEnter = loadPortalOnEnter;
     }
 
     public void Activate()
@@ -38,7 +63,7 @@ public class SceneBeacon : MonoBehaviour
         if (portal != null)
         {
             portal.SetPortalEnabled(true);
-            portal.Configure(targetSceneName);
+            portal.Configure(targetSceneName, portalLoadOnEnter);
         }
 
         BuffNotificationOverlay.ShowCustom(activationTitle, activationDetail);

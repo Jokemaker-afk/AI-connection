@@ -1,0 +1,322 @@
+using UnityEngine;
+
+/// <summary>
+/// Unified item creation entry point.
+/// Chain: ItemKind → ItemCatalog / ItemData → ItemModuleFactory → world / placed / handheld / inventory.
+/// See ITEM_MODULE_WORKFLOW.md for adding new items.
+/// </summary>
+public static class ItemModuleFactory
+{
+    const float DefaultPickupVisualScale = 0.55f;
+    const string PickupVisualChildName = "Visual";
+
+    public static GameObject SpawnWorldPickup(ItemKind kind, Vector3 position, int amount = 1, Transform parent = null)
+    {
+        if (!TryGetValidatedData(kind, "SpawnWorldPickup", out ItemData data))
+        {
+            return null;
+        }
+
+        GameObject root;
+        if (data.WorldPickupPrefab != null)
+        {
+            root = Object.Instantiate(data.WorldPickupPrefab, position, Quaternion.identity, parent);
+            root.name = $"Pickup_{kind}";
+            LogFallback(kind, "world pickup prefab");
+        }
+        else
+        {
+            root = new GameObject($"Pickup_{kind}");
+            root.transform.SetParent(parent, false);
+            root.transform.position = position;
+            CreateItemVisual(kind, ItemVisualMode.WorldPickup, root.transform);
+            LogFallback(kind, "generated world pickup visual");
+        }
+
+        ConfigureWorldPickup(root, kind, amount);
+        return root;
+    }
+
+    public static GameObject SpawnPlacedObject(ItemKind kind, Vector3 position, Quaternion rotation, Transform parent = null)
+    {
+        if (!TryGetValidatedData(kind, "SpawnPlacedObject", out ItemData data))
+        {
+            return null;
+        }
+
+        if (!data.IsPlaceable)
+        {
+            Debug.LogWarning($"[ItemModule] {kind} is not placeable.");
+            return null;
+        }
+
+        GameObject root;
+        if (data.PlacedPrefab != null)
+        {
+            root = Object.Instantiate(data.PlacedPrefab, position, rotation, parent);
+            root.name = $"Placed_{kind}";
+            EnsurePlacedComponents(root, kind, data);
+            LogFallback(kind, "placed prefab");
+        }
+        else
+        {
+            root = PlacedObjectBuilder.SpawnPlacedObject(kind, position, rotation);
+            if (root != null && parent != null)
+            {
+                root.transform.SetParent(parent, true);
+            }
+
+            LogFallback(kind, "generated placed object");
+        }
+
+        return root;
+    }
+
+    public static GameObject SpawnHandheldTool(ItemKind kind, Transform socket, bool isFirstPerson)
+    {
+        if (socket == null || !TryGetValidatedData(kind, "SpawnHandheldTool", out ItemData data))
+        {
+            return null;
+        }
+
+        if (!data.IsHandheldTool)
+        {
+            Debug.LogWarning($"[ItemModule] {kind} is not a handheld tool.");
+            return null;
+        }
+
+        GameObject instance;
+        if (data.HandheldTool.HandheldPrefab != null)
+        {
+            instance = Object.Instantiate(data.HandheldTool.HandheldPrefab, socket);
+            LogFallback(kind, "handheld prefab");
+        }
+        else
+        {
+            GameObject template = HandheldToolPrefabBuilder.GetOrCreatePrefab(kind);
+            if (template == null)
+            {
+                return null;
+            }
+
+            instance = Object.Instantiate(template, socket);
+            LogFallback(kind, "generated handheld prototype");
+        }
+
+        instance.name = $"Equipped_{kind}";
+        instance.transform.localPosition = Vector3.zero;
+        instance.transform.localRotation = Quaternion.identity;
+        instance.transform.localScale = Vector3.one;
+        instance.SetActive(true);
+
+        ApplyHandheldTransform(instance.transform, data.HandheldTool, isFirstPerson);
+        EnsureHandheldComponents(instance, kind, data.HandheldTool);
+        return instance;
+    }
+
+    public static InventorySlotData CreateInventoryEntry(ItemKind kind, int amount)
+    {
+        if (!TryGetValidatedData(kind, "CreateInventoryEntry", out ItemData data))
+        {
+            return InventorySlotData.Empty;
+        }
+
+        int clampedAmount = Mathf.Clamp(amount, 1, data.Stackable ? data.MaxStack : 1);
+        if (!data.Stackable)
+        {
+            clampedAmount = 1;
+        }
+
+        return InventorySlotData.Of(kind, clampedAmount);
+    }
+
+    public static GameObject CreateItemVisual(ItemKind kind, ItemVisualMode mode, Transform parent = null)
+    {
+        if (!TryGetValidatedData(kind, "CreateItemVisual", out ItemData data))
+        {
+            return null;
+        }
+
+        switch (mode)
+        {
+            case ItemVisualMode.WorldPickup:
+                return ItemVisualBuilder.CreatePickupVisual(parent, kind, Vector3.one * DefaultPickupVisualScale);
+
+            case ItemVisualMode.Placed:
+            {
+                Vector3 scale = data.PlacedBoundsSize.sqrMagnitude > 0.01f
+                    ? data.PlacedBoundsSize
+                    : PlacedObjectBuilder.GetPlacedVisualScale(kind);
+                Vector3 offset = Vector3.up * scale.y * 0.5f;
+                return ItemVisualBuilder.CreatePlacedVisual(parent, kind, scale, offset);
+            }
+
+            case ItemVisualMode.Handheld:
+            {
+                if (data.HandheldTool.HandheldPrefab != null && parent != null)
+                {
+                    var instance = Object.Instantiate(data.HandheldTool.HandheldPrefab, parent);
+                    instance.name = PickupVisualChildName;
+                    return instance;
+                }
+
+                GameObject template = HandheldToolPrefabBuilder.GetOrCreatePrefab(kind);
+                if (template == null || parent == null)
+                {
+                    return null;
+                }
+
+                var toolInstance = Object.Instantiate(template, parent);
+                toolInstance.name = PickupVisualChildName;
+                return toolInstance;
+            }
+
+            default:
+                return null;
+        }
+    }
+
+    public static ItemKind GetItemKindForWorkstation(WorkstationKind workstationKind)
+    {
+        switch (workstationKind)
+        {
+            case WorkstationKind.Furnace:
+                return ItemKind.Furnace;
+            case WorkstationKind.Forge:
+                return ItemKind.Forge;
+            case WorkstationKind.Loom:
+                return ItemKind.Loom;
+            case WorkstationKind.AlchemyTable:
+                return ItemKind.AlchemyTable;
+            case WorkstationKind.ScienceLab:
+                return ItemKind.ScienceLab;
+            default:
+                return ItemKind.CraftingTable;
+        }
+    }
+
+    public static GameObject SpawnWorkstation(WorkstationKind workstationKind, Vector3 position, Quaternion rotation, Transform parent, string objectName = null)
+    {
+        ItemKind itemKind = GetItemKindForWorkstation(workstationKind);
+        GameObject root = SpawnPlacedObject(itemKind, position, rotation, parent);
+        if (root != null && !string.IsNullOrEmpty(objectName))
+        {
+            root.name = objectName;
+        }
+
+        return root;
+    }
+
+    static bool TryGetValidatedData(ItemKind kind, string operation, out ItemData data)
+    {
+        data = ItemCatalog.Get(kind);
+        if (data.IsValid)
+        {
+            return true;
+        }
+
+        Debug.LogWarning($"[ItemModule] {operation} failed: ItemData missing for {kind}.");
+        return false;
+    }
+
+    static void ConfigureWorldPickup(GameObject pickupRoot, ItemKind kind, int amount)
+    {
+        var pickup = pickupRoot.GetComponent<WorldPickupItem>();
+        if (pickup == null)
+        {
+            pickup = pickupRoot.AddComponent<WorldPickupItem>();
+        }
+
+        pickup.Configure(kind, amount);
+
+        if (pickupRoot.GetComponent<SphereCollider>() == null)
+        {
+            var trigger = pickupRoot.AddComponent<SphereCollider>();
+            trigger.radius = pickup.PickupRadius;
+            trigger.isTrigger = true;
+        }
+
+        GameplayLayers.TrySetPickupLayer(pickupRoot);
+    }
+
+    static void EnsurePlacedComponents(GameObject root, ItemKind kind, ItemData data)
+    {
+        Vector3 scale = data.PlacedBoundsSize.sqrMagnitude > 0.01f
+            ? data.PlacedBoundsSize
+            : PlacedObjectBuilder.GetPlacedVisualScale(kind);
+
+        if (root.GetComponentInChildren<Collider>() == null)
+        {
+            var box = root.AddComponent<BoxCollider>();
+            box.center = Vector3.up * scale.y * 0.5f;
+            box.size = scale;
+        }
+
+        var surface = root.GetComponent<PlacementSurface>() ?? root.AddComponent<PlacementSurface>();
+        surface.Initialize(kind);
+
+        var placed = root.GetComponent<PlacedBuilding>() ?? root.AddComponent<PlacedBuilding>();
+        placed.Initialize(kind, data.PlacedBuildingKind, data.PlacedWorkstationKind);
+
+        var pickupable = root.GetComponent<PlacedPickupable>() ?? root.AddComponent<PlacedPickupable>();
+        pickupable.Initialize(kind);
+
+        if (data.PlacedWorkstationKind != WorkstationKind.None)
+        {
+            var station = root.GetComponent<CraftingStation>() ?? root.AddComponent<CraftingStation>();
+            station.Configure(data.PlacedWorkstationKind, $"按 E 打开制造（{data.DisplayName}）");
+            placed.AttachCraftingStation(station);
+        }
+
+        ItemWorldLabel.Create(root.transform, data.DisplayName, Vector3.up * (scale.y * 0.65f + 0.2f), 0.08f);
+    }
+
+    static void EnsureHandheldComponents(GameObject instance, ItemKind kind, HandheldToolProfile profile)
+    {
+        var visual = instance.GetComponent<HandheldToolVisual>();
+        if (visual == null)
+        {
+            visual = instance.AddComponent<HandheldToolVisual>();
+        }
+
+        visual.Configure(kind, profile.Animations, profile.FallbackSwingEnabled);
+
+        var marker = instance.GetComponent<HandheldToolPrototypeMarker>();
+        if (marker == null)
+        {
+            marker = instance.AddComponent<HandheldToolPrototypeMarker>();
+        }
+
+        marker.Configure(kind);
+    }
+
+    static void ApplyHandheldTransform(Transform toolTransform, HandheldToolProfile profile, bool firstPerson)
+    {
+        if (firstPerson)
+        {
+            toolTransform.localPosition = profile.FirstPersonLocalPosition;
+            toolTransform.localEulerAngles = profile.FirstPersonLocalEuler;
+            toolTransform.localScale = profile.FirstPersonLocalScale;
+        }
+        else
+        {
+            toolTransform.localPosition = profile.ThirdPersonLocalPosition;
+            toolTransform.localEulerAngles = profile.ThirdPersonLocalEuler;
+            toolTransform.localScale = profile.ThirdPersonLocalScale;
+        }
+    }
+
+    static void LogFallback(ItemKind kind, string representation)
+    {
+        if (!ItemCatalog.TryGet(kind, out ItemData data))
+        {
+            return;
+        }
+
+        bool usedPrefab = representation.Contains("prefab");
+        if (!usedPrefab)
+        {
+            Debug.Log($"[ItemModule] {kind} using {representation} (color fallback).");
+        }
+    }
+}

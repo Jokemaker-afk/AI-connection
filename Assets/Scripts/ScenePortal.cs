@@ -10,12 +10,19 @@ public class ScenePortal : MonoBehaviour
     bool loading;
     bool portalEnabled = true;
 
-    public void Configure(string sceneName)
+    public void Configure(string sceneName, bool loadOnTriggerEnter = true)
     {
         if (!string.IsNullOrEmpty(sceneName))
         {
             targetSceneName = sceneName;
         }
+
+        loadOnEnter = loadOnTriggerEnter;
+    }
+
+    public void SetLoadOnEnter(bool enabled)
+    {
+        loadOnEnter = enabled;
     }
 
     public void SetPortalEnabled(bool enabled)

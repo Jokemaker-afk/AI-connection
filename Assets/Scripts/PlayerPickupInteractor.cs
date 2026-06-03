@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerPickupInteractor : MonoBehaviour
@@ -29,7 +29,20 @@ public class PlayerPickupInteractor : MonoBehaviour
             targeting = gameObject.AddComponent<PlayerGameplayTargeting>();
         }
 
-        craftingInteractor = GetComponent<PlayerCraftingInteractor>();
+        EnsureCraftingInteractor();
+    }
+
+    void EnsureCraftingInteractor()
+    {
+        if (craftingInteractor == null)
+        {
+            craftingInteractor = GetComponent<PlayerCraftingInteractor>();
+        }
+
+        if (craftingInteractor == null)
+        {
+            craftingInteractor = gameObject.AddComponent<PlayerCraftingInteractor>();
+        }
     }
 
     void Update()
@@ -46,12 +59,21 @@ public class PlayerPickupInteractor : MonoBehaviour
 
         if (Keyboard.current.fKey.wasPressedThisFrame)
         {
+            var toolController = GetComponent<PlayerToolController>();
+            if (toolController != null
+                && toolController.HasEquippedTool
+                && toolController.TryUseSelectedTool())
+            {
+                return;
+            }
+
             TryPickupCurrentTarget();
         }
     }
 
     void TryInteract()
     {
+        EnsureCraftingInteractor();
         if (craftingInteractor == null)
         {
             return;
@@ -59,7 +81,11 @@ public class PlayerPickupInteractor : MonoBehaviour
 
         if (targeting != null && targeting.HasCraftingStation)
         {
-            craftingInteractor.TryOpenCrafting();
+            if (craftingInteractor.TryOpenCrafting())
+            {
+                GameplayCore.Instance?.Log($"Opened crafting UI from station: {PlayerGameplayTargeting.GetStationDisplayName(targeting.CraftingStation)}");
+            }
+
             return;
         }
 
@@ -68,7 +94,10 @@ public class PlayerPickupInteractor : MonoBehaviour
             return;
         }
 
-        craftingInteractor.TryOpenCrafting();
+        if (craftingInteractor.TryOpenCrafting())
+        {
+            GameplayCore.Instance?.Log("Opened crafting UI (portable / nearby workstation).");
+        }
     }
 
     public bool CanPickupCurrentTarget()

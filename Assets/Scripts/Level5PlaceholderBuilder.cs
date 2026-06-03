@@ -87,7 +87,7 @@ public static class Level5PlaceholderBuilder
 
             int amount = random.NextDouble() > 0.75d ? 2 : 1;
             float y = FloorTop + 0.55f + (float)random.NextDouble() * 0.25f;
-            WorldPickupItem.Create(parent, $"Material_{i + 1}", new Vector3(x, y, z), kind, amount);
+            ItemModuleFactory.SpawnWorldPickup(kind, new Vector3(x, y, z), amount, parent);
         }
     }
 
@@ -97,7 +97,7 @@ public static class Level5PlaceholderBuilder
         {
             float angle = i * Mathf.PI * 2f / BasicMaterials.Length;
             Vector3 pos = center + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
-            WorldPickupItem.Create(parent, $"MaterialRing_{center.x}_{i}", pos, BasicMaterials[i], 2);
+            ItemModuleFactory.SpawnWorldPickup(BasicMaterials[i], pos, 2, parent);
         }
     }
 

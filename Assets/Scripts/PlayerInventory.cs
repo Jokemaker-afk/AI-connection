@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 
 public class PlayerInventory : MonoBehaviour
@@ -501,9 +501,64 @@ public class PlayerInventory : MonoBehaviour
         }
     }
 
+    public bool HasAnyItem()
+    {
+        for (int i = 0; i < hotbar.Length; i++)
+        {
+            if (!hotbar[i].IsEmpty)
+            {
+                return true;
+            }
+        }
+
+        for (int i = 0; i < backpack.Length; i++)
+        {
+            if (!backpack[i].IsEmpty)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void NotifyChanged()
     {
         OnInventoryChanged?.Invoke();
+    }
+
+    public InventorySaveData CreateSaveData()
+    {
+        var hotbarCopy = new InventorySlotData[HotbarSize];
+        var backpackCopy = new InventorySlotData[BackpackSize];
+        System.Array.Copy(hotbar, hotbarCopy, HotbarSize);
+        System.Array.Copy(backpack, backpackCopy, BackpackSize);
+
+        return new InventorySaveData
+        {
+            Hotbar = hotbarCopy,
+            Backpack = backpackCopy,
+            SelectedHotbarIndex = selectedHotbarIndex,
+            HasData = HasAnyItem(),
+        };
+    }
+
+    public void ApplySaveData(InventorySaveData saveData)
+    {
+        if (saveData.Hotbar != null && saveData.Hotbar.Length == HotbarSize)
+        {
+            System.Array.Copy(saveData.Hotbar, hotbar, HotbarSize);
+        }
+
+        if (saveData.Backpack != null && saveData.Backpack.Length == BackpackSize)
+        {
+            System.Array.Copy(saveData.Backpack, backpack, BackpackSize);
+        }
+
+        SetSelectedHotbarIndex(saveData.SelectedHotbarIndex);
+        NormalizeSlotArray(hotbar);
+        NormalizeSlotArray(backpack);
+        NotifyChanged();
     }
 }
 

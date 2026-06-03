@@ -93,7 +93,7 @@ public static class Level4PlaceholderBuilder
             }
 
             float y = FloorTop + 0.55f + (float)random.NextDouble() * 0.35f;
-            WorldPickupItem.Create(parent, $"Pickup_{i + 1}", new Vector3(x, y, z), kind);
+            ItemModuleFactory.SpawnWorldPickup(kind, new Vector3(x, y, z), 1, parent);
         }
 
         PlacePickupRing(parent, new Vector3(0f, FloorTop + 0.65f, 6f), 4.5f);
@@ -107,7 +107,7 @@ public static class Level4PlaceholderBuilder
         {
             float angle = i * Mathf.PI * 2f / PickupKinds.Length;
             Vector3 pos = center + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
-            WorldPickupItem.Create(parent, $"PickupRing_{center.x}_{i}", pos, PickupKinds[i]);
+            ItemModuleFactory.SpawnWorldPickup(PickupKinds[i], pos, 1, parent);
         }
     }
 

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[DefaultExecutionOrder(40)]
 public class PlayerCameraController : MonoBehaviour
 {
     public enum CameraMode
@@ -15,8 +16,8 @@ public class PlayerCameraController : MonoBehaviour
     [Header("Third Person (Fortnite-style OTS)")]
     [SerializeField] float thirdPersonDistance = 5.2f;
     [SerializeField] float thirdPersonHeight = 2.0f;
-    [SerializeField] float thirdPersonSmooth = 12f;
-    [SerializeField] float cameraSmoothTime = 0.1f;
+    [SerializeField] bool smoothThirdPersonCameraPosition = false;
+    [SerializeField] float cameraSmoothTime = 0.04f;
     [SerializeField] bool alwaysFollowTarget = false;
     [SerializeField] bool useRightShoulder = true;
     [SerializeField] float shoulderOffsetX = 0.85f;
@@ -73,6 +74,22 @@ public class PlayerCameraController : MonoBehaviour
             yaw = target.eulerAngles.y;
         }
     }
+
+    /// <summary>Immediate horizontal aim forward from mouse yaw (same-frame, no camera smoothing).</summary>
+    public Vector3 GetImmediateAimForward()
+    {
+        return Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+    }
+
+    /// <summary>Immediate horizontal aim right from mouse yaw (same-frame, no camera smoothing).</summary>
+    public Vector3 GetImmediateAimRight()
+    {
+        return Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
+    }
+
+    public Vector3 GetPlanarForward() => GetImmediateAimForward();
+
+    public Vector3 GetPlanarRight() => GetImmediateAimRight();
 
     public void ConfigureAlwaysFollow(bool enabled, float distance = 5.2f, float height = 2f)
     {
@@ -243,17 +260,22 @@ public class PlayerCameraController : MonoBehaviour
         Vector3 desiredPosition = pivot + orbitRotation * localCameraOffset;
         desiredPosition = ResolveCameraCollision(pivot, desiredPosition);
 
-        if (alwaysFollowTarget || cameraSmoothTime <= 0.001f)
-        {
-            transform.position = desiredPosition;
-        }
-        else
+        bool usePositionSmoothing = smoothThirdPersonCameraPosition
+            && !alwaysFollowTarget
+            && cameraSmoothTime > 0.001f;
+
+        if (usePositionSmoothing)
         {
             transform.position = Vector3.SmoothDamp(
                 transform.position,
                 desiredPosition,
                 ref thirdPersonVelocity,
                 cameraSmoothTime);
+        }
+        else
+        {
+            transform.position = desiredPosition;
+            thirdPersonVelocity = Vector3.zero;
         }
 
         transform.rotation = orbitRotation;
@@ -310,7 +332,24 @@ public class PlayerCameraController : MonoBehaviour
             return;
         }
 
-        playerRenderers = target.GetComponentsInChildren<Renderer>();
+        var visualSwitcher = target.GetComponent<PlayerVisualSwitcher>();
+        if (visualSwitcher != null)
+        {
+            playerRenderers = visualSwitcher.GetActiveRenderers();
+            return;
+        }
+
+        Transform visualRoot = target.Find(PlayerVisualBuilder.VisualRootName);
+        if (visualRoot != null)
+        {
+            Transform activeModel = visualRoot.Find(PlayerVisualBuilder.DirectionalModelName);
+            playerRenderers = activeModel != null
+                ? activeModel.GetComponentsInChildren<Renderer>(true)
+                : visualRoot.GetComponentsInChildren<Renderer>(true);
+            return;
+        }
+
+        playerRenderers = target.GetComponentsInChildren<Renderer>(true);
     }
 
     void ApplyPlayerVisibility()

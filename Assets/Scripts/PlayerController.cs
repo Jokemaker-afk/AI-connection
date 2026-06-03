@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(PlayerStats))]
+[DefaultExecutionOrder(50)]
 public class PlayerController : MonoBehaviour
 {
     [SerializeField] float moveSpeed = 5f;
@@ -25,19 +26,27 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float voidDamagePerSecond = 50f;
     [SerializeField] float voidFallBelowGroundMargin = 1.2f;
 
-    [Header("Aim Rotation")]
-    [SerializeField] bool rotatePlayerTowardAimWhenPlacing = true;
-    [SerializeField] bool rotatePlayerTowardAimWhenInteracting = false;
-    [SerializeField] bool rotatePlayerTowardAimWhenAiming = true;
-    [SerializeField] float playerAimRotationSpeed = 540f;
+    [Header("Third-Person Movement (Fortnite-style)")]
+    [SerializeField] MovementMode movementMode = MovementMode.AimFacingStrafe;
+
+    [Header("Visual Facing (independent from movement)")]
+    [SerializeField] float visualAimTurnSpeed = 16f;
+    [SerializeField] bool useInstantVisualAimRotation = false;
+    [SerializeField] bool rotateMovementRootInFirstPerson = true;
+    [SerializeField] bool pauseVisualFacingWhenMenuOpen = true;
+
+    [Header("Placement Aim Override")]
+    [SerializeField] bool rotateVisualTowardAimWhenPlacing = true;
 
     CharacterController controller;
     PlayerStats stats;
     PlayerBuffController buffController;
     PlayerCameraController cameraController;
-    PlayerGameplayTargeting gameplayTargeting;
     PlayerPlacementController placementController;
+    Transform visualRoot;
     Vector3 velocity;
+    Vector3 lastMovementDirection = Vector3.forward;
+    Vector3 lastValidAimForward = Vector3.forward;
     float lastGroundedTime;
     float lastJumpPressedTime;
     float lastSafeGroundY;
@@ -59,7 +68,8 @@ public class PlayerController : MonoBehaviour
         }
 
         buffController = GetComponent<PlayerBuffController>();
-        PlayerAnchorUtility.AlignCapsuleVisual(gameObject);
+        PlayerVisualBuilder.EnsurePlayerVisual(gameObject);
+        CacheVisualRoot();
         if (cameraTransform == null && Camera.main != null)
         {
             cameraTransform = Camera.main.transform;
@@ -70,13 +80,19 @@ public class PlayerController : MonoBehaviour
             cameraController = cameraTransform.GetComponent<PlayerCameraController>();
         }
 
-        gameplayTargeting = GetComponent<PlayerGameplayTargeting>();
         placementController = GetComponent<PlayerPlacementController>();
 
         spawnPosition = transform.position;
         spawnRotation = transform.rotation;
         lastSafeGroundY = transform.position.y;
+        lastValidAimForward = transform.forward;
         stats.OnDeath += HandleDeath;
+    }
+
+    public void BindCameraTransform(Transform camera)
+    {
+        cameraTransform = camera;
+        cameraController = camera != null ? camera.GetComponent<PlayerCameraController>() : null;
     }
 
     void Start()
@@ -144,6 +160,7 @@ public class PlayerController : MonoBehaviour
         {
             return;
         }
+
         bool shiftHeld = Keyboard.current != null && Keyboard.current.leftShiftKey.isPressed;
         bool spaceHeld = Keyboard.current != null && Keyboard.current.spaceKey.isPressed;
 
@@ -187,20 +204,10 @@ public class PlayerController : MonoBehaviour
             input.Normalize();
         }
 
-        Vector3 move = Vector3.zero;
-        if (cameraTransform != null)
+        Vector3 move = BuildMovementDirection(input);
+        if (move.sqrMagnitude > 0.001f)
         {
-            Vector3 forward = cameraTransform.forward;
-            Vector3 right = cameraTransform.right;
-            forward.y = 0f;
-            right.y = 0f;
-            forward.Normalize();
-            right.Normalize();
-            move = forward * input.z + right * input.x;
-        }
-        else
-        {
-            move = transform.right * input.x + transform.forward * input.z;
+            lastMovementDirection = move.normalized;
         }
 
         bool wantsSprint = shiftHeld && move.sqrMagnitude > 0.001f && stats.CanSprint();
@@ -232,69 +239,200 @@ public class PlayerController : MonoBehaviour
         displacement += velocity * Time.deltaTime;
         controller.Move(displacement);
 
-        if (cameraController != null && cameraController.IsFirstPerson)
-        {
-            transform.rotation = Quaternion.Euler(0f, cameraController.Yaw, 0f);
-        }
-        else if (move.sqrMagnitude > 0.001f)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(move);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 12f * Time.deltaTime);
-        }
+        ApplyFirstPersonRootRotation();
     }
 
     void LateUpdate()
     {
-        if (!stats.IsAlive || GameplayCursorPolicy.IsAnyMenuOpen)
+        if (!stats.IsAlive)
         {
             return;
         }
 
-        if (!ShouldRotateTowardAim())
+        if (pauseVisualFacingWhenMenuOpen && GameplayCursorPolicy.IsAnyMenuOpen)
         {
             return;
         }
 
-        Vector3 aimForward = gameplayTargeting != null
-            ? gameplayTargeting.GetAimForward()
-            : cameraTransform != null ? cameraTransform.forward : transform.forward;
-        aimForward.y = 0f;
-        if (aimForward.sqrMagnitude < 0.001f)
-        {
-            return;
-        }
-
-        Quaternion targetRotation = Quaternion.LookRotation(aimForward.normalized);
-        transform.rotation = Quaternion.RotateTowards(
-            transform.rotation,
-            targetRotation,
-            playerAimRotationSpeed * Time.deltaTime);
+        UpdateVisualFacing();
     }
 
-    bool ShouldRotateTowardAim()
+    Vector3 BuildMovementDirection(Vector3 input)
     {
-        if (rotatePlayerTowardAimWhenPlacing
+        if (input.sqrMagnitude <= 0.001f)
+        {
+            return Vector3.zero;
+        }
+
+        GetMovementPlanarAxes(out Vector3 aimForward, out Vector3 aimRight);
+        return aimForward * input.z + aimRight * input.x;
+    }
+
+    void GetMovementPlanarAxes(out Vector3 aimForward, out Vector3 aimRight)
+    {
+        switch (movementMode)
+        {
+            case MovementMode.MoveFacing:
+                if (lastMovementDirection.sqrMagnitude > 0.001f)
+                {
+                    aimForward = lastMovementDirection;
+                    aimForward.y = 0f;
+                    aimForward.Normalize();
+                    aimRight = Vector3.Cross(Vector3.up, aimForward).normalized;
+                    return;
+                }
+
+                GetImmediateAimPlanarAxes(out aimForward, out aimRight);
+                return;
+            case MovementMode.CameraRelativeFreeMove:
+            case MovementMode.AimFacingStrafe:
+            default:
+                GetImmediateAimPlanarAxes(out aimForward, out aimRight);
+                return;
+        }
+    }
+
+    void GetImmediateAimPlanarAxes(out Vector3 aimForward, out Vector3 aimRight)
+    {
+        if (cameraController != null)
+        {
+            aimForward = cameraController.GetImmediateAimForward();
+            aimRight = cameraController.GetImmediateAimRight();
+            return;
+        }
+
+        if (cameraTransform != null)
+        {
+            aimForward = cameraTransform.forward;
+            aimRight = cameraTransform.right;
+            aimForward.y = 0f;
+            aimRight.y = 0f;
+            aimForward.Normalize();
+            aimRight.Normalize();
+            return;
+        }
+
+        aimForward = lastValidAimForward;
+        aimRight = Vector3.Cross(Vector3.up, aimForward).normalized;
+    }
+
+    void UpdateVisualFacing()
+    {
+        Vector3 desiredForward = GetVisualFacingForward();
+        if (desiredForward.sqrMagnitude < 0.001f)
+        {
+            return;
+        }
+
+        ApplyVisualRootFacing(desiredForward.normalized);
+    }
+
+    Vector3 GetVisualFacingForward()
+    {
+        if (ShouldUsePlacementAimOverride())
+        {
+            return GetImmediateAimForward();
+        }
+
+        switch (movementMode)
+        {
+            case MovementMode.MoveFacing:
+                if (lastMovementDirection.sqrMagnitude > 0.001f)
+                {
+                    return lastMovementDirection;
+                }
+
+                return GetImmediateAimForward();
+            case MovementMode.CameraRelativeFreeMove:
+            case MovementMode.AimFacingStrafe:
+            default:
+                return GetImmediateAimForward();
+        }
+    }
+
+    bool ShouldUsePlacementAimOverride()
+    {
+        return rotateVisualTowardAimWhenPlacing
             && placementController != null
-            && placementController.IsPlacementActive)
+            && placementController.IsPlacementActive;
+    }
+
+    Vector3 GetImmediateAimForward()
+    {
+        if (cameraController != null)
         {
-            return true;
+            Vector3 aimForward = cameraController.GetImmediateAimForward();
+            lastValidAimForward = aimForward;
+            return aimForward;
         }
 
-        if (rotatePlayerTowardAimWhenInteracting
-            && gameplayTargeting != null
-            && gameplayTargeting.HasCraftingStation)
+        Vector3 fallback = GetCrosshairAimForwardPlanar();
+        if (fallback.sqrMagnitude > 0.001f)
         {
-            return true;
+            lastValidAimForward = fallback;
         }
 
-        if (rotatePlayerTowardAimWhenAiming
-            && gameplayTargeting != null
-            && gameplayTargeting.HasAnyTarget)
+        return fallback;
+    }
+
+    Vector3 GetCrosshairAimForwardPlanar()
+    {
+        Ray crosshairRay = CrosshairRayUtility.GetCrosshairRay(out _);
+        Vector3 aimForward = crosshairRay.direction;
+        aimForward.y = 0f;
+
+        if (aimForward.sqrMagnitude < 0.001f)
         {
-            return true;
+            return lastValidAimForward;
         }
 
-        return false;
+        aimForward.Normalize();
+        return aimForward;
+    }
+
+    void ApplyVisualRootFacing(Vector3 desiredForward)
+    {
+        CacheVisualRoot();
+        if (visualRoot == null)
+        {
+            return;
+        }
+
+        desiredForward.y = 0f;
+        if (desiredForward.sqrMagnitude < 0.001f)
+        {
+            return;
+        }
+
+        Quaternion targetRotation = Quaternion.LookRotation(desiredForward.normalized);
+        if (useInstantVisualAimRotation)
+        {
+            visualRoot.rotation = targetRotation;
+            return;
+        }
+
+        float blend = Mathf.Clamp01(visualAimTurnSpeed * Time.deltaTime);
+        visualRoot.rotation = Quaternion.Slerp(visualRoot.rotation, targetRotation, blend);
+    }
+
+    void ApplyFirstPersonRootRotation()
+    {
+        if (!rotateMovementRootInFirstPerson
+            || cameraController == null
+            || !cameraController.IsFirstPerson)
+        {
+            return;
+        }
+
+        transform.rotation = Quaternion.Euler(0f, cameraController.Yaw, 0f);
+    }
+
+    void CacheVisualRoot()
+    {
+        if (visualRoot == null)
+        {
+            visualRoot = transform.Find(PlayerVisualBuilder.VisualRootName);
+        }
     }
 
     void HandleVoidFallPenalty()

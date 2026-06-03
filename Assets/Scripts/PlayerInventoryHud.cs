@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -906,6 +906,27 @@ public class PlayerInventoryHud : MonoBehaviour
             GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
             pickupPromptRoot.gameObject.SetActive(true);
             return;
+        }
+
+        var toolController = pickupInteractor != null
+            ? pickupInteractor.GetComponent<PlayerToolController>()
+            : FindFirstObjectByType<PlayerToolController>();
+        if (toolController != null && !string.IsNullOrEmpty(toolController.LastToolMessage))
+        {
+            GameplayChineseText.PrepareUiText(pickupPromptText, toolController.LastToolMessage);
+            pickupPromptRoot.gameObject.SetActive(true);
+            return;
+        }
+
+        if (gameplayTargeting != null && gameplayTargeting.HasToolInteractable && toolController != null)
+        {
+            string toolPrompt = toolController.GetToolPrompt();
+            if (!string.IsNullOrEmpty(toolPrompt))
+            {
+                GameplayChineseText.PrepareUiText(pickupPromptText, toolPrompt);
+                pickupPromptRoot.gameObject.SetActive(true);
+                return;
+            }
         }
 
         if (gameplayTargeting != null && gameplayTargeting.HasWorldPickup)

@@ -25,13 +25,21 @@ public class PlayerCraftingInteractor : MonoBehaviour
         }
 
         var inventory = GetComponent<PlayerInventory>();
-        if (inventory == null || craftingHud == null)
+        if (inventory == null)
         {
+            GameplayCore.Instance?.Log("E interaction failed: PlayerInventory missing.");
+            return false;
+        }
+
+        if (craftingHud == null)
+        {
+            GameplayCore.Instance?.Log("E interaction failed: CraftingHud not bound.");
             return false;
         }
 
         var contexts = WorkstationDetector.GetCraftingContexts(inventory.transform.position);
         craftingHud.OpenCrafting(inventory, contexts);
+        GameplayCore.Instance?.Log($"CraftingManager active. Workstation contexts: {contexts.Count - 1}");
         return true;
     }
 

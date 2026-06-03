@@ -2,17 +2,6 @@ using UnityEngine;
 
 public static class GameplayHudBootstrap
 {
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void BootstrapSceneHud()
-    {
-        if (GameObject.Find("GameplayHUD") == null)
-        {
-            return;
-        }
-
-        EnsureGameplayHud();
-    }
-
     public static void EnsureGameplayHud()
     {
         GameplayProgressionBootstrap.EnsureProgressionSystems();
@@ -81,7 +70,12 @@ public static class GameplayHudBootstrap
             return;
         }
 
-        var player = GameObject.Find("Player");
+        var player = PersistentPlayerRig.Player;
+        if (player == null)
+        {
+            player = GameObject.Find("Player");
+        }
+
         if (player == null)
         {
             player = Object.FindFirstObjectByType<PlayerController>()?.gameObject;
@@ -125,56 +119,19 @@ public static class GameplayHudBootstrap
         {
             craftingInteractor.BindCraftingHud(craftingHud);
         }
+
+        var toolController = player.GetComponent<PlayerToolController>();
+        toolController?.RefreshEquippedTool();
+    }
+
+    public static void EnsurePlayerComponentsPublic(GameObject player)
+    {
+        PlayerRootComponents.EnsureAll(player);
     }
 
     static void EnsurePlayerComponents(GameObject player)
     {
-        if (player.GetComponent<PlayerStats>() == null)
-        {
-            player.AddComponent<PlayerStats>();
-        }
-
-        if (player.GetComponent<GameScore>() == null)
-        {
-            player.AddComponent<GameScore>();
-        }
-
-        if (player.GetComponent<PlayerBuffController>() == null)
-        {
-            player.AddComponent<PlayerBuffController>();
-        }
-
-        if (player.GetComponent<PlayerShieldVisual>() == null)
-        {
-            player.AddComponent<PlayerShieldVisual>();
-        }
-
-        if (player.GetComponent<PlayerInventory>() == null)
-        {
-            player.AddComponent<PlayerInventory>();
-        }
-
-        if (player.GetComponent<PlayerPickupInteractor>() == null)
-        {
-            player.AddComponent<PlayerPickupInteractor>();
-        }
-
-        if (player.GetComponent<PlayerCraftingInteractor>() == null)
-        {
-            player.AddComponent<PlayerCraftingInteractor>();
-        }
-
-        if (player.GetComponent<PlayerPlacementController>() == null)
-        {
-            player.AddComponent<PlayerPlacementController>();
-        }
-
-        if (player.GetComponent<PlayerGameplayTargeting>() == null)
-        {
-            player.AddComponent<PlayerGameplayTargeting>();
-        }
-
-        GameplayLayers.TrySetPlayerLayer(player);
+        PlayerRootComponents.EnsureAll(player);
     }
 
     static void EnsureEventSystem()

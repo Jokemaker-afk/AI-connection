@@ -29,51 +29,10 @@ public static class PlayerAnchorUtility
     }
 
     /// <summary>
-    /// 将 Capsule 网格移到与 CharacterController 中心对齐的子物体，避免模型半截埋进地面。
+    /// Legacy entry point — now builds the directional placeholder visual.
     /// </summary>
     public static void AlignCapsuleVisual(GameObject player)
     {
-        var controller = player.GetComponent<CharacterController>();
-        if (controller == null)
-        {
-            return;
-        }
-
-        var existingVisual = player.transform.Find("Visual");
-        if (existingVisual != null)
-        {
-            existingVisual.localPosition = controller.center;
-            return;
-        }
-
-        var meshFilter = player.GetComponent<MeshFilter>();
-        var meshRenderer = player.GetComponent<MeshRenderer>();
-        if (meshFilter == null || meshRenderer == null)
-        {
-            return;
-        }
-
-        var visualGo = new GameObject("Visual");
-        visualGo.transform.SetParent(player.transform, false);
-        visualGo.transform.localPosition = controller.center;
-        visualGo.transform.localRotation = Quaternion.identity;
-        visualGo.transform.localScale = Vector3.one;
-
-        var visualMeshFilter = visualGo.AddComponent<MeshFilter>();
-        visualMeshFilter.sharedMesh = meshFilter.sharedMesh;
-
-        var visualMeshRenderer = visualGo.AddComponent<MeshRenderer>();
-        visualMeshRenderer.sharedMaterials = meshRenderer.sharedMaterials;
-
-        if (Application.isPlaying)
-        {
-            Object.Destroy(meshFilter);
-            Object.Destroy(meshRenderer);
-        }
-        else
-        {
-            Object.DestroyImmediate(meshFilter);
-            Object.DestroyImmediate(meshRenderer);
-        }
+        PlayerVisualBuilder.EnsurePlayerVisual(player);
     }
 }

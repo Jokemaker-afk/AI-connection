@@ -23,6 +23,7 @@ public static class PlacedObjectBuilder
 
     public static GameObject SpawnPlacedObject(ItemKind itemKind, Vector3 position, Quaternion rotation)
     {
+        // Prefer ItemModuleFactory.SpawnPlacedObject for new scene/item code.
         if (!ItemKindUtility.IsPlaceable(itemKind))
         {
             return null;

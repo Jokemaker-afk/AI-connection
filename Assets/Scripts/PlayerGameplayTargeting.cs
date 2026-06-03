@@ -25,6 +25,7 @@ public class PlayerGameplayTargeting : MonoBehaviour
     WorldPickupItem worldPickup;
     PlacedPickupable placedPickup;
     CraftingStation craftingStation;
+    ToolInteractable toolInteractable;
     Renderer highlightedRenderer;
     Color highlightedOriginalEmission;
     bool highlightedHadEmission;
@@ -36,12 +37,14 @@ public class PlayerGameplayTargeting : MonoBehaviour
     public WorldPickupItem WorldPickup => worldPickup;
     public PlacedPickupable PlacedPickup => placedPickup;
     public CraftingStation CraftingStation => craftingStation;
+    public ToolInteractable ToolInteractable => toolInteractable;
+    public bool HasToolInteractable => toolInteractable != null && !toolInteractable.IsCompleted;
     public bool HasWorldPickup => worldPickup != null && !worldPickup.IsCollected;
     public bool CanPickupWorldTarget => pickupTargeting != null && pickupTargeting.CanPickupSelected;
     public bool HasIdentifiedWorldPickup => HasWorldPickup;
     public bool HasPlacedPickup => placedPickup != null;
     public bool HasCraftingStation => craftingStation != null;
-    public bool HasAnyTarget => HasWorldPickup || HasPlacedPickup || HasCraftingStation;
+    public bool HasAnyTarget => HasWorldPickup || HasPlacedPickup || HasCraftingStation || HasToolInteractable;
     public bool IsWorldPickupTooFar => HasWorldPickup && !CanPickupWorldTarget;
     public PlayerPickupTargeting PickupTargeting => pickupTargeting;
 
@@ -94,6 +97,7 @@ public class PlayerGameplayTargeting : MonoBehaviour
         worldPickup = null;
         placedPickup = null;
         craftingStation = null;
+        toolInteractable = null;
 
         if (pickupTargeting != null)
         {
@@ -103,7 +107,7 @@ public class PlayerGameplayTargeting : MonoBehaviour
 
         Ray crosshairRay = GetCenterScreenRay();
         float rayRange = GetRaycastRange();
-        if (TryResolveInteractionRaycast(crosshairRay, rayRange, out placedPickup, out craftingStation))
+        if (TryResolveInteractionRaycast(crosshairRay, rayRange, out placedPickup, out craftingStation, out toolInteractable))
         {
             FinalizeTargetPriority();
             FilterTargetsByDistance();
@@ -112,7 +116,7 @@ public class PlayerGameplayTargeting : MonoBehaviour
 
         if (ShouldUseAssist())
         {
-            TryResolveInteractionConeBias(GetAssistAngle(), out placedPickup, out craftingStation);
+            TryResolveInteractionConeBias(GetAssistAngle(), out placedPickup, out craftingStation, out toolInteractable);
             FinalizeTargetPriority();
         }
 
@@ -150,6 +154,11 @@ public class PlayerGameplayTargeting : MonoBehaviour
         {
             craftingStation = null;
         }
+
+        if (toolInteractable != null && GetHorizontalDistance(toolInteractable.transform) > maxInteractionDistance)
+        {
+            toolInteractable = null;
+        }
     }
 
     float GetHorizontalDistance(Transform targetTransform)
@@ -181,6 +190,25 @@ public class PlayerGameplayTargeting : MonoBehaviour
         {
             worldPickup = null;
         }
+
+        if (toolInteractable != null && HasEquippedToolSelected())
+        {
+            worldPickup = null;
+            placedPickup = null;
+            craftingStation = null;
+        }
+    }
+
+    bool HasEquippedToolSelected()
+    {
+        var inventory = GetComponent<PlayerInventory>();
+        if (inventory == null)
+        {
+            return false;
+        }
+
+        InventorySlotData selected = inventory.GetHotbarSlot(inventory.SelectedHotbarIndex);
+        return !selected.IsEmpty && ItemKindUtility.IsHandheldTool(selected.Kind);
     }
 
     float GetRaycastRange()
@@ -198,6 +226,11 @@ public class PlayerGameplayTargeting : MonoBehaviour
         if (candidate is WorldPickupItem)
         {
             return maxPickupDistance;
+        }
+
+        if (candidate is ToolInteractable)
+        {
+            return maxInteractionDistance;
         }
 
         return maxInteractionDistance;
@@ -227,10 +260,12 @@ public class PlayerGameplayTargeting : MonoBehaviour
         Ray ray,
         float range,
         out PlacedPickupable placed,
-        out CraftingStation station)
+        out CraftingStation station,
+        out ToolInteractable toolTarget)
     {
         placed = null;
         station = null;
+        toolTarget = null;
 
         RaycastHit[] hits = Physics.RaycastAll(
             ray,
@@ -239,29 +274,34 @@ public class PlayerGameplayTargeting : MonoBehaviour
             QueryTriggerInteraction.Collide);
 
         System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-        return ExtractInteractionTargetsFromHits(hits, ref placed, ref station);
+        return ExtractInteractionTargetsFromHits(hits, ref placed, ref station, ref toolTarget);
     }
 
     bool TryResolveInteractionConeBias(
         float assistAngle,
         out PlacedPickupable placed,
-        out CraftingStation station)
+        out CraftingStation station,
+        out ToolInteractable toolTarget)
     {
         placed = null;
         station = null;
+        toolTarget = null;
 
         Vector3 origin = viewCamera != null ? viewCamera.transform.position : transform.position + Vector3.up * 1.4f;
         Vector3 forward = GetAimForward();
         float bestScore = float.MaxValue;
         PlacedPickupable bestPlaced = null;
         CraftingStation bestStation = null;
+        ToolInteractable bestTool = null;
 
-        EvaluateConeCandidates(origin, forward, assistAngle, ref bestScore, ref bestPlaced, ref bestStation, FindObjectsByType<PlacedPickupable>());
-        EvaluateConeCandidates(origin, forward, assistAngle, ref bestScore, ref bestPlaced, ref bestStation, FindObjectsByType<CraftingStation>());
+        EvaluateConeCandidates(origin, forward, assistAngle, ref bestScore, ref bestPlaced, ref bestStation, ref bestTool, FindObjectsByType<PlacedPickupable>());
+        EvaluateConeCandidates(origin, forward, assistAngle, ref bestScore, ref bestPlaced, ref bestStation, ref bestTool, FindObjectsByType<CraftingStation>());
+        EvaluateConeCandidates(origin, forward, assistAngle, ref bestScore, ref bestPlaced, ref bestStation, ref bestTool, FindObjectsByType<ToolInteractable>());
 
         placed = bestPlaced;
         station = bestStation;
-        return placed != null || station != null;
+        toolTarget = bestTool;
+        return placed != null || station != null || toolTarget != null;
     }
 
     void EvaluateConeCandidates<T>(
@@ -271,6 +311,7 @@ public class PlayerGameplayTargeting : MonoBehaviour
         ref float bestScore,
         ref PlacedPickupable bestPlaced,
         ref CraftingStation bestStation,
+        ref ToolInteractable bestTool,
         T[] candidates) where T : Component
     {
         for (int i = 0; i < candidates.Length; i++)
@@ -336,12 +377,28 @@ public class PlayerGameplayTargeting : MonoBehaviour
             }
             else if (candidate is CraftingStation stationCandidate)
             {
-                if (bestPlaced != null)
+                if (bestPlaced != null || bestTool != null)
                 {
                     continue;
                 }
 
                 bestStation = stationCandidate;
+                bestScore = score;
+            }
+            else if (candidate is ToolInteractable toolCandidate)
+            {
+                if (toolCandidate.IsCompleted)
+                {
+                    continue;
+                }
+
+                if (bestPlaced != null)
+                {
+                    continue;
+                }
+
+                bestTool = toolCandidate;
+                bestStation = null;
                 bestScore = score;
             }
         }
@@ -401,7 +458,8 @@ public class PlayerGameplayTargeting : MonoBehaviour
 
             if (hitCollider.GetComponentInParent<WorldPickupItem>() != null
                 || hitCollider.GetComponentInParent<PlacedPickupable>() != null
-                || hitCollider.GetComponentInParent<CraftingStation>() != null)
+                || hitCollider.GetComponentInParent<CraftingStation>() != null
+                || hitCollider.GetComponentInParent<ToolInteractable>() != null)
             {
                 return ignoreRoot != null && hitCollider.transform.IsChildOf(ignoreRoot);
             }
@@ -415,13 +473,22 @@ public class PlayerGameplayTargeting : MonoBehaviour
     static bool ExtractInteractionTargetsFromHits(
         RaycastHit[] hits,
         ref PlacedPickupable placed,
-        ref CraftingStation station)
+        ref CraftingStation station,
+        ref ToolInteractable toolTarget)
     {
         bool found = false;
         for (int i = 0; i < hits.Length; i++)
         {
             if (hits[i].collider == null || IsPlayerCollider(hits[i].collider))
             {
+                continue;
+            }
+
+            var toolCandidate = hits[i].collider.GetComponentInParent<ToolInteractable>();
+            if (toolCandidate != null && !toolCandidate.IsCompleted && toolTarget == null)
+            {
+                toolTarget = toolCandidate;
+                found = true;
                 continue;
             }
 
@@ -455,11 +522,17 @@ public class PlayerGameplayTargeting : MonoBehaviour
         worldPickup = null;
         placedPickup = null;
         craftingStation = null;
+        toolInteractable = null;
         pickupTargeting?.ClearSelection();
     }
 
     public string GetPrimaryTargetName()
     {
+        if (HasToolInteractable)
+        {
+            return toolInteractable.DisplayNameChinese;
+        }
+
         if (HasPlacedPickup)
         {
             return ItemKindUtility.GetDisplayName(placedPickup.ItemKind);
@@ -487,6 +560,11 @@ public class PlayerGameplayTargeting : MonoBehaviour
         {
             nextRenderer = placedPickup.GetComponentInChildren<Renderer>();
             highlightColor = ItemKindUtility.GetDisplayColor(placedPickup.ItemKind) * 0.55f;
+        }
+        else if (HasToolInteractable)
+        {
+            nextRenderer = toolInteractable.GetComponentInChildren<Renderer>();
+            highlightColor = new Color(0.95f, 0.78f, 0.32f);
         }
         else if (HasWorldPickup && CanPickupWorldTarget)
         {
