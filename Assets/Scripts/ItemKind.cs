@@ -4,6 +4,8 @@ using UnityEngine;
 public enum ItemKind
 {
     None = 0,
+
+    // Legacy Level4 colored blocks
     RedBlock,
     OrangeBlock,
     YellowBlock,
@@ -14,6 +16,53 @@ public enum ItemKind
     PinkBlock,
     WhiteBlock,
     GrayBlock,
+
+    // Level5 basic materials
+    Wood,
+    Stone,
+    Grass,
+    Fiber,
+    Vine,
+    Flint,
+    Clay,
+    OreFragment,
+    Coal,
+    Berry,
+
+    // Level5 intermediate materials
+    Plank,
+    Stick,
+    Rope,
+    Cloth,
+    Brick,
+    MetalIngot,
+
+    // Level5 functional items
+    CraftingTable,
+    StoneAxe,
+    StonePickaxe,
+    SimpleBackpack,
+    Campfire,
+    Furnace,
+    Bandage,
+    BasicSword,
+    KeyFragment,
+
+    // Building materials (placeable)
+    WoodWall,
+    StoneWall,
+    WoodFloor,
+    StoneFloor,
+
+    // Additional workstations (placeable)
+    Forge,
+    Loom,
+    AlchemyTable,
+    ScienceLab,
+
+    // Storage (placeable)
+    WoodChest,
+    LargeChest,
 }
 
 public static class ItemKindUtility
@@ -23,48 +72,157 @@ public static class ItemKindUtility
 
     public static string GetDisplayName(ItemKind kind)
     {
-        switch (kind)
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
         {
-            case ItemKind.RedBlock: return "红色块";
-            case ItemKind.OrangeBlock: return "橙色块";
-            case ItemKind.YellowBlock: return "黄色块";
-            case ItemKind.GreenBlock: return "绿色块";
-            case ItemKind.CyanBlock: return "青色块";
-            case ItemKind.BlueBlock: return "蓝色块";
-            case ItemKind.PurpleBlock: return "紫色块";
-            case ItemKind.PinkBlock: return "粉色块";
-            case ItemKind.WhiteBlock: return "白色块";
-            case ItemKind.GrayBlock: return "灰色块";
-            default: return string.Empty;
+            return data.DisplayName;
         }
+
+        return string.Empty;
     }
 
     public static Color GetDisplayColor(ItemKind kind)
     {
-        switch (kind)
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
         {
-            case ItemKind.RedBlock: return new Color(0.92f, 0.28f, 0.24f);
-            case ItemKind.OrangeBlock: return new Color(0.98f, 0.55f, 0.18f);
-            case ItemKind.YellowBlock: return new Color(0.98f, 0.86f, 0.2f);
-            case ItemKind.GreenBlock: return new Color(0.32f, 0.82f, 0.38f);
-            case ItemKind.CyanBlock: return new Color(0.28f, 0.82f, 0.88f);
-            case ItemKind.BlueBlock: return new Color(0.28f, 0.48f, 0.95f);
-            case ItemKind.PurpleBlock: return new Color(0.62f, 0.38f, 0.92f);
-            case ItemKind.PinkBlock: return new Color(0.95f, 0.45f, 0.72f);
-            case ItemKind.WhiteBlock: return new Color(0.92f, 0.92f, 0.92f);
-            case ItemKind.GrayBlock: return new Color(0.55f, 0.58f, 0.62f);
-            default: return new Color(0.2f, 0.2f, 0.2f, 0f);
+            return data.DisplayColor;
         }
+
+        return new Color(0.2f, 0.2f, 0.2f, 0f);
+    }
+
+    public static ItemCategory GetCategory(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.Category;
+        }
+
+        return ItemCategory.None;
+    }
+
+    public static int GetMaxStackSize(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.Stackable ? data.MaxStack : 1;
+        }
+
+        return MaxStackSize;
     }
 
     public static bool IsValid(ItemKind kind)
     {
-        return kind != ItemKind.None;
+        return kind != ItemKind.None && ItemCatalog.TryGet(kind, out _);
     }
 
     public static bool IsStackable(ItemKind kind)
     {
-        return IsValid(kind);
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.Stackable;
+        }
+
+        return false;
+    }
+
+    public static bool IsPlaceable(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.IsPlaceable;
+        }
+
+        return false;
+    }
+
+    public static bool CanBePlacedOnTop(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.CanBePlacedOnTop;
+        }
+
+        return false;
+    }
+
+    public static bool CanSupportPlacedObjects(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.CanSupportPlacedObjects;
+        }
+
+        return false;
+    }
+
+    public static bool AllowStacking(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.AllowStacking;
+        }
+
+        return false;
+    }
+
+    public static Vector3 GetPlacedBoundsSize(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid && data.PlacedBoundsSize.sqrMagnitude > 0.01f)
+        {
+            return data.PlacedBoundsSize;
+        }
+
+        return Vector3.zero;
+    }
+
+    public static BuildingKind GetPlacedBuildingKind(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.PlacedBuildingKind;
+        }
+
+        return BuildingKind.None;
+    }
+
+    public static WorkstationKind GetPlacedWorkstationKind(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.PlacedWorkstationKind;
+        }
+
+        return WorkstationKind.None;
+    }
+
+    public static GameObject GetWorldPickupPrefab(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.WorldPickupPrefab;
+        }
+
+        return null;
+    }
+
+    public static GameObject GetPlacedPrefab(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.PlacedPrefab;
+        }
+
+        return null;
+    }
+
+    public static Sprite GetIcon(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid && data.Icon != null)
+        {
+            return data.Icon;
+        }
+
+        return GetIconSprite(kind);
     }
 
     public static Sprite GetIconSprite(ItemKind kind)

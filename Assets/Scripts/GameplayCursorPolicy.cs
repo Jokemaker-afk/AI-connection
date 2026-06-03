@@ -3,8 +3,11 @@ using UnityEngine;
 public static class GameplayCursorPolicy
 {
     static bool inventoryUiOpen;
+    static bool craftingUiOpen;
 
     public static bool IsInventoryUiOpen => inventoryUiOpen;
+    public static bool IsCraftingUiOpen => craftingUiOpen;
+    public static bool IsAnyMenuOpen => inventoryUiOpen || craftingUiOpen;
 
     public static void SetInventoryUiOpen(bool open)
     {
@@ -12,9 +15,15 @@ public static class GameplayCursorPolicy
         Apply();
     }
 
+    public static void SetCraftingUiOpen(bool open)
+    {
+        craftingUiOpen = open;
+        Apply();
+    }
+
     public static void Apply()
     {
-        if (inventoryUiOpen)
+        if (IsAnyMenuOpen)
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;

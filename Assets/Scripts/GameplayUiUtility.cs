@@ -2,6 +2,11 @@ using UnityEngine;
 
 public static class GameplayUiUtility
 {
+    public static Font GetUiFont()
+    {
+        return GameplayChineseText.GetUiFont();
+    }
+
     public static void EnsureRootScale(RectTransform rect)
     {
         if (rect == null)

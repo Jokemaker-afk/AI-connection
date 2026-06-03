@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -15,6 +15,8 @@ public class PlayerInventoryHud : MonoBehaviour
 
     [SerializeField] PlayerInventory inventory;
     [SerializeField] PlayerPickupInteractor pickupInteractor;
+    [SerializeField] PlayerGameplayTargeting gameplayTargeting;
+    [SerializeField] CraftingHud craftingHud;
 
     [Header("Right Click Split")]
     [SerializeField] float rightClickHoldThreshold = 1.5f;
@@ -30,6 +32,15 @@ public class PlayerInventoryHud : MonoBehaviour
     RectTransform dragGhost;
     Image dragGhostIcon;
     Text dragGhostCount;
+
+    RectTransform itemTooltipRoot;
+    Text itemTooltipText;
+    LayoutElement itemTooltipLayout;
+
+    bool itemTooltipVisible;
+    InventorySlotRegion itemTooltipRegion;
+    int itemTooltipIndex = -1;
+    bool itemTooltipRegionValid;
 
     bool backpackOpen;
     bool isDragging;
@@ -87,6 +98,11 @@ public class PlayerInventoryHud : MonoBehaviour
         if (isDragging || hasCursorHeld)
         {
             UpdateDragGhostPosition(mousePos);
+            HideItemTooltip();
+        }
+        else if (itemTooltipVisible && backpackOpen)
+        {
+            UpdateItemTooltipPosition(mousePos);
         }
     }
 
@@ -96,10 +112,16 @@ public class PlayerInventoryHud : MonoBehaviour
         DestroyPanel("BackpackPanel");
         DestroyPanel("PickupPromptPanel");
         DestroyPanel("DragGhost");
+        DestroyPanel("ItemDetailTooltip");
         hotbarRoot = null;
         backpackRoot = null;
         pickupPromptRoot = null;
         dragGhost = null;
+        itemTooltipRoot = null;
+        itemTooltipText = null;
+        itemTooltipLayout = null;
+        itemTooltipVisible = false;
+        itemTooltipRegionValid = false;
         hotbarSlotViews = null;
         backpackSlotViews = null;
         BuildUi();
@@ -130,6 +152,26 @@ public class PlayerInventoryHud : MonoBehaviour
         if (pickupInteractor == null)
         {
             pickupInteractor = FindFirstObjectByType<PlayerPickupInteractor>();
+        }
+
+        if (gameplayTargeting == null && pickupInteractor != null)
+        {
+            gameplayTargeting = pickupInteractor.GetComponent<PlayerGameplayTargeting>();
+        }
+
+        if (gameplayTargeting == null)
+        {
+            gameplayTargeting = FindFirstObjectByType<PlayerGameplayTargeting>();
+        }
+
+        if (craftingHud == null)
+        {
+            craftingHud = GetComponent<CraftingHud>();
+        }
+
+        if (craftingHud == null)
+        {
+            craftingHud = FindFirstObjectByType<CraftingHud>();
         }
     }
 
@@ -169,21 +211,26 @@ public class PlayerInventoryHud : MonoBehaviour
             return;
         }
 
+        bool craftingOpen = craftingHud != null && craftingHud.IsOpen;
+
         if (Keyboard.current.bKey.wasPressedThisFrame)
         {
             SetBackpackOpen(!backpackOpen);
         }
 
-        for (int i = 0; i < PlayerInventory.HotbarSize; i++)
+        if (!craftingOpen)
         {
-            if (WasDigitPressed(i))
+            for (int i = 0; i < PlayerInventory.HotbarSize; i++)
             {
-                inventory.SetSelectedHotbarIndex(i);
-                break;
+                if (WasDigitPressed(i))
+                {
+                    inventory.SetSelectedHotbarIndex(i);
+                    break;
+                }
             }
         }
 
-        if (Mouse.current != null && !backpackOpen)
+        if (Mouse.current != null && !backpackOpen && !craftingOpen)
         {
             float scroll = Mouse.current.scroll.y.ReadValue();
             if (scroll > 0f)
@@ -236,6 +283,7 @@ public class PlayerInventoryHud : MonoBehaviour
             EndDrag(false);
             ReturnCursorHeldSafely();
             CancelRightClickTracking();
+            HideItemTooltip();
         }
 
         RefreshAll();
@@ -246,6 +294,16 @@ public class PlayerInventoryHud : MonoBehaviour
         if (hotbarRoot != null)
         {
             hotbarRoot.SetAsLastSibling();
+        }
+
+        if (backpackRoot != null)
+        {
+            backpackRoot.SetAsLastSibling();
+        }
+
+        if (itemTooltipRoot != null)
+        {
+            itemTooltipRoot.SetAsLastSibling();
         }
 
         if (pickupPromptRoot != null)
@@ -264,6 +322,7 @@ public class PlayerInventoryHud : MonoBehaviour
         UnsubscribeInventory();
         ReturnCursorHeldSafely();
         CancelRightClickTracking();
+        HideItemTooltip();
 
         if (backpackOpen)
         {
@@ -279,6 +338,7 @@ public class PlayerInventoryHud : MonoBehaviour
         BuildBackpackPanel();
         BuildPickupPrompt();
         BuildDragGhost();
+        BuildItemDetailTooltip();
     }
 
     void EnsureCanvas()
@@ -549,6 +609,149 @@ public class PlayerInventoryHud : MonoBehaviour
         ghostGo.SetActive(false);
     }
 
+    void BuildItemDetailTooltip()
+    {
+        var existing = transform.Find("ItemDetailTooltip");
+        if (existing != null)
+        {
+            itemTooltipRoot = existing as RectTransform;
+            itemTooltipText = itemTooltipRoot.GetComponentInChildren<Text>();
+            itemTooltipLayout = itemTooltipRoot.GetComponent<LayoutElement>();
+            itemTooltipRoot.gameObject.SetActive(false);
+            return;
+        }
+
+        var panelGo = new GameObject(
+            "ItemDetailTooltip",
+            typeof(RectTransform),
+            typeof(Image),
+            typeof(LayoutElement),
+            typeof(CanvasGroup));
+        panelGo.transform.SetParent(transform, false);
+
+        itemTooltipRoot = panelGo.GetComponent<RectTransform>();
+        itemTooltipRoot.anchorMin = new Vector2(0f, 0f);
+        itemTooltipRoot.anchorMax = new Vector2(0f, 0f);
+        itemTooltipRoot.pivot = new Vector2(0f, 1f);
+
+        var background = panelGo.GetComponent<Image>();
+        background.color = new Color(0.05f, 0.08f, 0.12f, 0.92f);
+        background.raycastTarget = false;
+
+        var canvasGroup = panelGo.GetComponent<CanvasGroup>();
+        canvasGroup.blocksRaycasts = false;
+        canvasGroup.interactable = false;
+
+        itemTooltipLayout = panelGo.GetComponent<LayoutElement>();
+        itemTooltipLayout.minWidth = 96f;
+        itemTooltipLayout.preferredHeight = 34f;
+
+        var textGo = new GameObject("Name", typeof(RectTransform), typeof(Text));
+        textGo.transform.SetParent(panelGo.transform, false);
+
+        itemTooltipText = textGo.GetComponent<Text>();
+        itemTooltipText.font = GetFont();
+        itemTooltipText.fontSize = 17;
+        itemTooltipText.fontStyle = FontStyle.Bold;
+        itemTooltipText.alignment = TextAnchor.MiddleLeft;
+        itemTooltipText.color = Color.white;
+        itemTooltipText.raycastTarget = false;
+        itemTooltipText.horizontalOverflow = HorizontalWrapMode.Overflow;
+        itemTooltipText.verticalOverflow = VerticalWrapMode.Overflow;
+
+        var textRect = textGo.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(12f, 4f);
+        textRect.offsetMax = new Vector2(-12f, -4f);
+
+        panelGo.SetActive(false);
+    }
+
+    void ShowItemTooltip(ItemKind kind, InventorySlotRegion region, int index)
+    {
+        if (!backpackOpen || kind == ItemKind.None || !ItemKindUtility.IsValid(kind))
+        {
+            HideItemTooltip();
+            return;
+        }
+
+        if (itemTooltipRoot == null || itemTooltipText == null)
+        {
+            BuildItemDetailTooltip();
+        }
+
+        itemTooltipRegion = region;
+        itemTooltipIndex = index;
+        itemTooltipRegionValid = true;
+        itemTooltipVisible = true;
+        itemTooltipText.text = ItemKindUtility.GetDisplayName(kind);
+        Canvas.ForceUpdateCanvases();
+        float textWidth = itemTooltipText.preferredWidth;
+        itemTooltipRoot.sizeDelta = new Vector2(Mathf.Max(96f, textWidth + 24f), 34f);
+        itemTooltipRoot.gameObject.SetActive(true);
+        itemTooltipRoot.SetAsLastSibling();
+
+        if (dragGhost != null)
+        {
+            dragGhost.SetAsLastSibling();
+        }
+
+        Vector2 mousePos = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
+        UpdateItemTooltipPosition(mousePos);
+    }
+
+    void HideItemTooltip()
+    {
+        itemTooltipVisible = false;
+        itemTooltipRegionValid = false;
+        itemTooltipIndex = -1;
+
+        if (itemTooltipRoot != null)
+        {
+            itemTooltipRoot.gameObject.SetActive(false);
+        }
+    }
+
+    void UpdateItemTooltipPosition(Vector2 screenPos)
+    {
+        if (!itemTooltipVisible || itemTooltipRoot == null)
+        {
+            return;
+        }
+
+        const float offsetX = 18f;
+        const float offsetY = -14f;
+        Vector2 position = screenPos + new Vector2(offsetX, offsetY);
+
+        float width = itemTooltipRoot.rect.width > 1f ? itemTooltipRoot.rect.width : 120f;
+        float height = itemTooltipRoot.rect.height > 1f ? itemTooltipRoot.rect.height : 34f;
+        position.x = Mathf.Clamp(position.x, 4f, Screen.width - width - 4f);
+        position.y = Mathf.Clamp(position.y, height + 4f, Screen.height - 4f);
+
+        itemTooltipRoot.position = position;
+    }
+
+    void ValidateItemTooltipSlot()
+    {
+        if (!itemTooltipVisible || !itemTooltipRegionValid || inventory == null)
+        {
+            return;
+        }
+
+        InventorySlotData slot = GetSlot(itemTooltipRegion, itemTooltipIndex);
+        if (slot.IsEmpty)
+        {
+            HideItemTooltip();
+            return;
+        }
+
+        if (itemTooltipText != null)
+        {
+            itemTooltipText.text = ItemKindUtility.GetDisplayName(slot.Kind);
+        }
+    }
+
     bool HasValidHotbarViews()
     {
         if (hotbarSlotViews == null || hotbarSlotViews.Length != HotbarColumns)
@@ -641,6 +844,7 @@ public class PlayerInventoryHud : MonoBehaviour
         RefreshHotbarSelection();
         RefreshPickupPrompt();
         UpdateCursorGhostVisual();
+        ValidateItemTooltipSlot();
     }
 
     void RefreshSlots()
@@ -687,26 +891,137 @@ public class PlayerInventoryHud : MonoBehaviour
             return;
         }
 
-        if (pickupInteractor != null && pickupInteractor.HasTarget)
+        if (gameplayTargeting == null)
         {
-            var target = pickupInteractor.CurrentTarget;
-            string itemName = ItemKindUtility.GetDisplayName(target.ItemKind);
-            bool canTake = inventory != null && inventory.CanAcceptItem(target.ItemKind, target.Amount);
-            pickupPromptText.text = canTake
-                ? $"按 F 拾取 {itemName}"
-                : $"按 F 拾取 {itemName}（背包已满）";
+            gameplayTargeting = FindFirstObjectByType<PlayerGameplayTargeting>();
+        }
+
+        if (gameplayTargeting != null && gameplayTargeting.HasPlacedPickup)
+        {
+            string itemName = ItemKindUtility.GetDisplayName(gameplayTargeting.PlacedPickup.ItemKind);
+            bool canTake = inventory != null && inventory.CanAcceptItem(gameplayTargeting.PlacedPickup.ItemKind, 1);
+            string prompt = canTake
+                ? $"按 F 收回：{itemName}"
+                : $"按 F 收回：{itemName}（背包已满）";
+            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
             pickupPromptRoot.gameObject.SetActive(true);
             return;
         }
 
+        if (gameplayTargeting != null && gameplayTargeting.HasWorldPickup)
+        {
+            bool canTake = inventory != null
+                && inventory.CanAcceptItem(gameplayTargeting.WorldPickup.ItemKind, gameplayTargeting.WorldPickup.Amount);
+            string prompt = gameplayTargeting.GetWorldPickupPrompt(canTake);
+            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
+            pickupPromptRoot.gameObject.SetActive(!string.IsNullOrEmpty(prompt));
+            return;
+        }
+
+        if (pickupInteractor != null && pickupInteractor.HasPlacedTarget)
+        {
+            string itemName = ItemKindUtility.GetDisplayName(pickupInteractor.CurrentPlacedTarget.ItemKind);
+            bool canTake = inventory != null && inventory.CanAcceptItem(pickupInteractor.CurrentPlacedTarget.ItemKind, 1);
+            string prompt = canTake
+                ? $"按 F 收回：{itemName}"
+                : $"按 F 收回：{itemName}（背包已满）";
+            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
+            pickupPromptRoot.gameObject.SetActive(true);
+            return;
+        }
+
+        if (pickupInteractor != null && pickupInteractor.HasWorldTarget)
+        {
+            bool canTake = inventory != null
+                && pickupInteractor.CurrentTarget != null
+                && inventory.CanAcceptItem(pickupInteractor.CurrentTarget.ItemKind, pickupInteractor.CurrentTarget.Amount);
+            string prompt = gameplayTargeting != null
+                ? gameplayTargeting.GetWorldPickupPrompt(canTake)
+                : string.Empty;
+            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
+            pickupPromptRoot.gameObject.SetActive(!string.IsNullOrEmpty(prompt));
+            return;
+        }
+
+        if (gameplayTargeting != null && gameplayTargeting.HasCraftingStation)
+        {
+            string stationName = PlayerGameplayTargeting.GetStationDisplayName(gameplayTargeting.CraftingStation);
+            GameplayChineseText.PrepareUiText(pickupPromptText, $"按 E 使用：{stationName}");
+            pickupPromptRoot.gameObject.SetActive(true);
+            return;
+        }
+
+        var placementController = pickupInteractor != null
+            ? pickupInteractor.GetComponent<PlayerPlacementController>()
+            : FindFirstObjectByType<PlayerPlacementController>();
+        if (placementController != null && placementController.IsPlacementActive)
+        {
+            string itemName = ItemKindUtility.GetDisplayName(placementController.ActiveItem);
+            GameplayChineseText.PrepareUiText(pickupPromptText, $"左键放置：{itemName}");
+            pickupPromptRoot.gameObject.SetActive(true);
+            return;
+        }
+
+        if (placementController != null && !string.IsNullOrEmpty(placementController.LastPlacementMessage))
+        {
+            GameplayChineseText.PrepareUiText(pickupPromptText, placementController.LastPlacementMessage);
+            pickupPromptRoot.gameObject.SetActive(true);
+            return;
+        }
+
+        var craftingInteractor = pickupInteractor != null
+            ? pickupInteractor.GetComponent<PlayerCraftingInteractor>()
+            : FindFirstObjectByType<PlayerCraftingInteractor>();
+        if (craftingInteractor != null)
+        {
+            string craftingPrompt = craftingInteractor.GetPromptText();
+            if (!string.IsNullOrEmpty(craftingPrompt))
+            {
+                GameplayChineseText.PrepareUiText(pickupPromptText, craftingPrompt);
+                pickupPromptRoot.gameObject.SetActive(true);
+                return;
+            }
+        }
+
         pickupPromptRoot.gameObject.SetActive(false);
+    }
+
+    internal void HandleSlotPointerEnter(InventorySlotRegion region, int index)
+    {
+        if (!backpackOpen || inventory == null || hasCursorHeld || isDragging)
+        {
+            return;
+        }
+
+        InventorySlotData slot = GetSlot(region, index);
+        if (slot.IsEmpty)
+        {
+            HideItemTooltip();
+            return;
+        }
+
+        ShowItemTooltip(slot.Kind, region, index);
+    }
+
+    internal void HandleSlotPointerExit(InventorySlotRegion region, int index)
+    {
+        if (!itemTooltipVisible || !itemTooltipRegionValid)
+        {
+            return;
+        }
+
+        if (itemTooltipRegion == region && itemTooltipIndex == index)
+        {
+            HideItemTooltip();
+        }
     }
 
     internal void HandleSlotPointerClick(InventorySlotRegion region, int index, PointerEventData eventData)
     {
         if (inventory == null || !backpackOpen)
         {
-            if (region == InventorySlotRegion.Hotbar && inventory != null)
+            bool craftingOpen = craftingHud != null && craftingHud.IsOpen;
+            if (region == InventorySlotRegion.Hotbar && inventory != null && !craftingOpen)
             {
                 inventory.SetSelectedHotbarIndex(index);
             }
@@ -995,6 +1310,8 @@ public class PlayerInventoryHud : MonoBehaviour
 
     internal void HandleSlotBeginDrag(InventorySlotRegion region, int index, PointerEventData eventData)
     {
+        HideItemTooltip();
+
         if (!backpackOpen || inventory == null || hasCursorHeld)
         {
             return;
@@ -1132,13 +1449,7 @@ public class PlayerInventoryHud : MonoBehaviour
 
     static Font GetFont()
     {
-        var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (font == null)
-        {
-            font = Font.CreateDynamicFontFromOSFont("Arial", 16);
-        }
-
-        return font;
+        return GameplayUiUtility.GetUiFont();
     }
 
     static Image CreateImage(Transform parent, string name, Color color)
@@ -1166,7 +1477,7 @@ public class PlayerInventoryHud : MonoBehaviour
         rect.offsetMax = new Vector2(-padding, -padding);
     }
 
-    sealed class InventorySlotView : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IPointerUpHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
+    sealed class InventorySlotView : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IPointerUpHandler, IPointerEnterHandler, IPointerExitHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
     {
         Image iconImage;
         Image borderImage;
@@ -1400,6 +1711,16 @@ public class PlayerInventoryHud : MonoBehaviour
         public void OnPointerUp(PointerEventData eventData)
         {
             owner?.HandleSlotPointerUp(region, index, eventData);
+        }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            owner?.HandleSlotPointerEnter(region, index);
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            owner?.HandleSlotPointerExit(region, index);
         }
 
         public void OnBeginDrag(PointerEventData eventData)

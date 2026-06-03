@@ -9,6 +9,8 @@ public static class LevelSetupMenu
     const string Level2ScenePath = "Assets/Scenes/Level2.unity";
     const string Level3ScenePath = "Assets/Scenes/Level3.unity";
     const string Level4ScenePath = "Assets/Scenes/Level4.unity";
+    const string Level5ScenePath = "Assets/Scenes/Level5.unity";
+    const string Level6ScenePath = "Assets/Scenes/Level6.unity";
 
     [MenuItem("Tools/Setup Level 1 (Score Win)")]
     public static void SetupLevel1()
@@ -125,6 +127,109 @@ public static class LevelSetupMenu
         EnsureAllLevelsInBuildSettings();
 
         Debug.Log("Level 4 scene created at Assets/Scenes/Level4.unity");
+    }
+
+    [MenuItem("Tools/Setup Level 4 (Collectibles -> Level 5 Portal)")]
+    public static void SetupLevel4()
+    {
+        EnsureSceneOpen(Level4ScenePath);
+        EnsureLevel4CollectibleSystems();
+        EditorSceneManager.SaveOpenScenes();
+        Debug.Log("Level 4 configured: collect 30% pickups to spawn center portal, enter portal to load Level5.");
+    }
+
+    [MenuItem("Tools/Create Level 5 Scene (Crafting Tutorial Placeholder)")]
+    public static void CreateLevel5Scene()
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+
+        foreach (var extra in Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None))
+        {
+            if (extra.name == "Main Camera" || extra.name == "Directional Light")
+            {
+                Object.DestroyImmediate(extra);
+            }
+        }
+
+        GameplayRigBuilder.EnsureCoreGameplayObjects(new Vector3(0f, 0.25f, -4f));
+        Level5PlaceholderBuilder.Generate(true);
+
+        EditorSceneManager.SaveScene(scene, Level5ScenePath);
+        AddSceneToBuildSettings(Level5ScenePath);
+        EnsureAllLevelsInBuildSettings();
+
+        Debug.Log("Level 5 placeholder scene created at Assets/Scenes/Level5.unity");
+    }
+
+    [MenuItem("Tools/Setup Level 5 (Crafting Tutorial)")]
+    public static void SetupLevel5()
+    {
+        EnsureSceneOpen(Level5ScenePath);
+
+        var arena = GameObject.Find("Level5Arena");
+        if (arena == null)
+        {
+            Level5PlaceholderBuilder.Generate(true);
+        }
+
+        EditorSceneManager.SaveOpenScenes();
+        Debug.Log("Level 5 configured: craft and place Workbench + Furnace to activate the Level 6 beacon.");
+    }
+
+    [MenuItem("Tools/Create Level 6 Scene (Placeholder)")]
+    public static void CreateLevel6Scene()
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+
+        foreach (var extra in Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None))
+        {
+            if (extra.name == "Main Camera" || extra.name == "Directional Light")
+            {
+                Object.DestroyImmediate(extra);
+            }
+        }
+
+        GameplayRigBuilder.EnsureCoreGameplayObjects(new Vector3(0f, 0f, -2f));
+        Level6PlaceholderBuilder.Generate(true);
+
+        EditorSceneManager.SaveScene(scene, Level6ScenePath);
+        AddSceneToBuildSettings(Level6ScenePath);
+        EnsureAllLevelsInBuildSettings();
+
+        Debug.Log("Level 6 placeholder scene created at Assets/Scenes/Level6.unity");
+    }
+
+    static void EnsureLevel4CollectibleSystems()
+    {
+        var systemsGo = GameObject.Find("Level4Systems");
+        if (systemsGo == null)
+        {
+            systemsGo = new GameObject("Level4Systems");
+            var arena = GameObject.Find("Level4Arena");
+            if (arena != null)
+            {
+                systemsGo.transform.SetParent(arena.transform, false);
+            }
+        }
+
+        if (systemsGo.GetComponent<CollectibleManager>() == null)
+        {
+            systemsGo.AddComponent<CollectibleManager>();
+        }
+
+        if (systemsGo.GetComponent<PortalUnlockManager>() == null)
+        {
+            systemsGo.AddComponent<PortalUnlockManager>();
+        }
+
+        var portalUnlock = systemsGo.GetComponent<PortalUnlockManager>();
+        portalUnlock.Configure(new Vector3(0f, 0.65f, 0f), "Level5", 0.3f);
+
+        var hudGo = GameObject.Find("GameplayHUD");
+        if (hudGo != null && hudGo.GetComponent<CollectibleProgressHud>() == null)
+        {
+            hudGo.AddComponent<CollectibleProgressHud>();
+        }
     }
 
     static void EnsureLevel3LevelManager()
@@ -249,6 +354,8 @@ public static class LevelSetupMenu
         AddSceneToBuildSettings(Level2ScenePath);
         AddSceneToBuildSettings(Level3ScenePath);
         AddSceneToBuildSettings(Level4ScenePath);
+        AddSceneToBuildSettings(Level5ScenePath);
+        AddSceneToBuildSettings(Level6ScenePath);
     }
 
     static void AddSceneToBuildSettings(string scenePath)

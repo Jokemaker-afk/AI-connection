@@ -25,10 +25,18 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float voidDamagePerSecond = 50f;
     [SerializeField] float voidFallBelowGroundMargin = 1.2f;
 
+    [Header("Aim Rotation")]
+    [SerializeField] bool rotatePlayerTowardAimWhenPlacing = true;
+    [SerializeField] bool rotatePlayerTowardAimWhenInteracting = false;
+    [SerializeField] bool rotatePlayerTowardAimWhenAiming = true;
+    [SerializeField] float playerAimRotationSpeed = 540f;
+
     CharacterController controller;
     PlayerStats stats;
     PlayerBuffController buffController;
     PlayerCameraController cameraController;
+    PlayerGameplayTargeting gameplayTargeting;
+    PlayerPlacementController placementController;
     Vector3 velocity;
     float lastGroundedTime;
     float lastJumpPressedTime;
@@ -61,6 +69,9 @@ public class PlayerController : MonoBehaviour
         {
             cameraController = cameraTransform.GetComponent<PlayerCameraController>();
         }
+
+        gameplayTargeting = GetComponent<PlayerGameplayTargeting>();
+        placementController = GetComponent<PlayerPlacementController>();
 
         spawnPosition = transform.position;
         spawnRotation = transform.rotation;
@@ -230,6 +241,60 @@ public class PlayerController : MonoBehaviour
             Quaternion targetRotation = Quaternion.LookRotation(move);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 12f * Time.deltaTime);
         }
+    }
+
+    void LateUpdate()
+    {
+        if (!stats.IsAlive || GameplayCursorPolicy.IsAnyMenuOpen)
+        {
+            return;
+        }
+
+        if (!ShouldRotateTowardAim())
+        {
+            return;
+        }
+
+        Vector3 aimForward = gameplayTargeting != null
+            ? gameplayTargeting.GetAimForward()
+            : cameraTransform != null ? cameraTransform.forward : transform.forward;
+        aimForward.y = 0f;
+        if (aimForward.sqrMagnitude < 0.001f)
+        {
+            return;
+        }
+
+        Quaternion targetRotation = Quaternion.LookRotation(aimForward.normalized);
+        transform.rotation = Quaternion.RotateTowards(
+            transform.rotation,
+            targetRotation,
+            playerAimRotationSpeed * Time.deltaTime);
+    }
+
+    bool ShouldRotateTowardAim()
+    {
+        if (rotatePlayerTowardAimWhenPlacing
+            && placementController != null
+            && placementController.IsPlacementActive)
+        {
+            return true;
+        }
+
+        if (rotatePlayerTowardAimWhenInteracting
+            && gameplayTargeting != null
+            && gameplayTargeting.HasCraftingStation)
+        {
+            return true;
+        }
+
+        if (rotatePlayerTowardAimWhenAiming
+            && gameplayTargeting != null
+            && gameplayTargeting.HasAnyTarget)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     void HandleVoidFallPenalty()

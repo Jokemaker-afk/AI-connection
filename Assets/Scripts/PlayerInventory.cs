@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 
 public class PlayerInventory : MonoBehaviour
@@ -51,8 +51,8 @@ public class PlayerInventory : MonoBehaviour
         int remaining = amount;
         remaining = SimulateStack(hotbar, kind, remaining);
         remaining = SimulateStack(backpack, kind, remaining);
-        remaining = SimulateFillEmpty(hotbar, remaining);
-        remaining = SimulateFillEmpty(backpack, remaining);
+        remaining = SimulateFillEmpty(hotbar, kind, remaining);
+        remaining = SimulateFillEmpty(backpack, kind, remaining);
         return remaining <= 0;
     }
 
@@ -130,9 +130,9 @@ public class PlayerInventory : MonoBehaviour
             held = InventorySlotData.Empty;
             changed = true;
         }
-        else if (target.Kind == held.Kind && target.Count < ItemKindUtility.MaxStackSize)
+        else if (target.Kind == held.Kind && target.Count < ItemKindUtility.GetMaxStackSize(target.Kind))
         {
-            int space = ItemKindUtility.MaxStackSize - target.Count;
+            int space = ItemKindUtility.GetMaxStackSize(target.Kind) - target.Count;
             int moved = Mathf.Min(space, held.Count);
             if (moved > 0)
             {
@@ -161,6 +161,137 @@ public class PlayerInventory : MonoBehaviour
         }
 
         return changed;
+    }
+
+    public int CountItem(ItemKind kind)
+    {
+        if (!ItemKindUtility.IsValid(kind))
+        {
+            return 0;
+        }
+
+        int total = 0;
+        for (int i = 0; i < hotbar.Length; i++)
+        {
+            if (hotbar[i].Kind == kind)
+            {
+                total += hotbar[i].Count;
+            }
+        }
+
+        for (int i = 0; i < backpack.Length; i++)
+        {
+            if (backpack[i].Kind == kind)
+            {
+                total += backpack[i].Count;
+            }
+        }
+
+        return total;
+    }
+
+    public bool HasIngredients(CraftingIngredient[] ingredients)
+    {
+        if (ingredients == null)
+        {
+            return true;
+        }
+
+        for (int i = 0; i < ingredients.Length; i++)
+        {
+            if (CountItem(ingredients[i].Item) < ingredients[i].Count)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public bool TryConsumeIngredients(CraftingIngredient[] ingredients)
+    {
+        if (!HasIngredients(ingredients))
+        {
+            return false;
+        }
+
+        for (int i = 0; i < ingredients.Length; i++)
+        {
+            if (!TryRemoveItem(ingredients[i].Item, ingredients[i].Count, notify: false))
+            {
+                return false;
+            }
+        }
+
+        NotifyChanged();
+        return true;
+    }
+
+    public bool TryRemoveItem(ItemKind kind, int amount, bool notify = true)
+    {
+        if (!ItemKindUtility.IsValid(kind) || amount <= 0 || CountItem(kind) < amount)
+        {
+            return false;
+        }
+
+        int remaining = amount;
+        remaining = RemoveFromSlots(backpack, kind, remaining);
+        remaining = RemoveFromSlots(hotbar, kind, remaining);
+        if (remaining > 0)
+        {
+            return false;
+        }
+
+        NormalizeSlotArray(hotbar);
+        NormalizeSlotArray(backpack);
+        if (notify)
+        {
+            NotifyChanged();
+        }
+
+        return true;
+    }
+
+    public bool TryConsumeFromSelectedHotbar(int amount = 1)
+    {
+        if (amount <= 0 || selectedHotbarIndex < 0 || selectedHotbarIndex >= HotbarSize)
+        {
+            return false;
+        }
+
+        InventorySlotData slot = hotbar[selectedHotbarIndex];
+        if (slot.IsEmpty || slot.Count < amount)
+        {
+            return false;
+        }
+
+        slot.Count -= amount;
+        hotbar[selectedHotbarIndex] = slot.Count > 0 ? slot : InventorySlotData.Empty;
+        NormalizeSlotArray(hotbar);
+        NotifyChanged();
+        return true;
+    }
+
+    static int RemoveFromSlots(InventorySlotData[] slots, ItemKind kind, int amount)
+    {
+        int remaining = amount;
+        for (int i = 0; i < slots.Length && remaining > 0; i++)
+        {
+            if (slots[i].Kind != kind)
+            {
+                continue;
+            }
+
+            int removed = Mathf.Min(slots[i].Count, remaining);
+            slots[i].Count -= removed;
+            remaining -= removed;
+            if (slots[i].Count <= 0)
+            {
+                slots[i] = InventorySlotData.Empty;
+            }
+        }
+
+        return remaining;
     }
 
     public bool TryReabsorbHeld(ref InventorySlotData held)
@@ -230,9 +361,9 @@ public class PlayerInventory : MonoBehaviour
             fromArray[fromIndex] = InventorySlotData.Empty;
             changed = true;
         }
-        else if (to.Kind == from.Kind && to.Count < ItemKindUtility.MaxStackSize)
+        else if (to.Kind == from.Kind && to.Count < ItemKindUtility.GetMaxStackSize(to.Kind))
         {
-            int space = ItemKindUtility.MaxStackSize - to.Count;
+            int space = ItemKindUtility.GetMaxStackSize(to.Kind) - to.Count;
             int moved = Mathf.Min(space, from.Count);
             if (moved > 0)
             {
@@ -292,12 +423,12 @@ public class PlayerInventory : MonoBehaviour
         int remaining = amount;
         for (int i = 0; i < slots.Length && remaining > 0; i++)
         {
-            if (slots[i].IsEmpty || slots[i].Kind != kind || slots[i].Count >= ItemKindUtility.MaxStackSize)
+            if (slots[i].IsEmpty || slots[i].Kind != kind || slots[i].Count >= ItemKindUtility.GetMaxStackSize(kind))
             {
                 continue;
             }
 
-            int space = ItemKindUtility.MaxStackSize - slots[i].Count;
+            int space = ItemKindUtility.GetMaxStackSize(kind) - slots[i].Count;
             int moved = Mathf.Min(space, remaining);
             var slot = slots[i];
             slot.Count += moved;
@@ -318,7 +449,7 @@ public class PlayerInventory : MonoBehaviour
                 continue;
             }
 
-            int stack = Mathf.Min(ItemKindUtility.MaxStackSize, remaining);
+            int stack = Mathf.Min(ItemKindUtility.GetMaxStackSize(kind), remaining);
             slots[i] = InventorySlotData.Of(kind, stack);
             remaining -= stack;
         }
@@ -331,20 +462,21 @@ public class PlayerInventory : MonoBehaviour
         int remaining = amount;
         for (int i = 0; i < slots.Length && remaining > 0; i++)
         {
-            if (slots[i].IsEmpty || slots[i].Kind != kind || slots[i].Count >= ItemKindUtility.MaxStackSize)
+            if (slots[i].IsEmpty || slots[i].Kind != kind || slots[i].Count >= ItemKindUtility.GetMaxStackSize(kind))
             {
                 continue;
             }
 
-            remaining -= ItemKindUtility.MaxStackSize - slots[i].Count;
+            remaining -= ItemKindUtility.GetMaxStackSize(kind) - slots[i].Count;
         }
 
         return Mathf.Max(0, remaining);
     }
 
-    static int SimulateFillEmpty(InventorySlotData[] slots, int amount)
+    static int SimulateFillEmpty(InventorySlotData[] slots, ItemKind kind, int amount)
     {
         int remaining = amount;
+        int maxStack = ItemKindUtility.GetMaxStackSize(kind);
         for (int i = 0; i < slots.Length && remaining > 0; i++)
         {
             if (!slots[i].IsEmpty)
@@ -352,7 +484,7 @@ public class PlayerInventory : MonoBehaviour
                 continue;
             }
 
-            remaining -= ItemKindUtility.MaxStackSize;
+            remaining -= maxStack;
         }
 
         return Mathf.Max(0, remaining);

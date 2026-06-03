@@ -15,6 +15,7 @@ public static class GameplayHudBootstrap
 
     public static void EnsureGameplayHud()
     {
+        GameplayProgressionBootstrap.EnsureProgressionSystems();
         EnsureEventSystem();
 
         var hudGo = GameObject.Find("GameplayHUD");
@@ -46,7 +47,20 @@ public static class GameplayHudBootstrap
             inventoryHud = hudGo.AddComponent<PlayerInventoryHud>();
         }
 
+        var craftingHud = hudGo.GetComponent<CraftingHud>();
+        if (craftingHud == null)
+        {
+            craftingHud = hudGo.AddComponent<CraftingHud>();
+        }
+
+        var crosshairHud = hudGo.GetComponent<GameplayCrosshairHud>();
+        if (crosshairHud == null)
+        {
+            crosshairHud = hudGo.AddComponent<GameplayCrosshairHud>();
+        }
+
         hud.RebuildUi();
+        crosshairHud.RebuildUi();
 
         BindAll(hudGo);
 
@@ -55,6 +69,8 @@ public static class GameplayHudBootstrap
 
     public static void BindAll(GameObject hudGo = null)
     {
+        ItemWorldLabel.UpgradeLegacyLabels();
+
         if (hudGo == null)
         {
             hudGo = GameObject.Find("GameplayHUD");
@@ -81,12 +97,14 @@ public static class GameplayHudBootstrap
         var hud = hudGo.GetComponent<PlayerHUD>();
         var buffHud = hudGo.GetComponent<PlayerBuffHud>();
         var inventoryHud = hudGo.GetComponent<PlayerInventoryHud>();
+        var craftingHud = hudGo.GetComponent<CraftingHud>();
 
         var stats = player.GetComponent<PlayerStats>();
         var score = player.GetComponent<GameScore>();
         var buffController = player.GetComponent<PlayerBuffController>();
         var inventory = player.GetComponent<PlayerInventory>();
         var pickupInteractor = player.GetComponent<PlayerPickupInteractor>();
+        var craftingInteractor = player.GetComponent<PlayerCraftingInteractor>();
 
         if (hud != null && stats != null)
         {
@@ -101,6 +119,11 @@ public static class GameplayHudBootstrap
         if (inventoryHud != null && inventory != null)
         {
             inventoryHud.BindTo(inventory, pickupInteractor);
+        }
+
+        if (craftingHud != null && craftingInteractor != null)
+        {
+            craftingInteractor.BindCraftingHud(craftingHud);
         }
     }
 
@@ -135,6 +158,23 @@ public static class GameplayHudBootstrap
         {
             player.AddComponent<PlayerPickupInteractor>();
         }
+
+        if (player.GetComponent<PlayerCraftingInteractor>() == null)
+        {
+            player.AddComponent<PlayerCraftingInteractor>();
+        }
+
+        if (player.GetComponent<PlayerPlacementController>() == null)
+        {
+            player.AddComponent<PlayerPlacementController>();
+        }
+
+        if (player.GetComponent<PlayerGameplayTargeting>() == null)
+        {
+            player.AddComponent<PlayerGameplayTargeting>();
+        }
+
+        GameplayLayers.TrySetPlayerLayer(player);
     }
 
     static void EnsureEventSystem()
@@ -146,7 +186,11 @@ public static class GameplayHudBootstrap
                 "EventSystem",
                 typeof(UnityEngine.EventSystems.EventSystem),
                 typeof(UnityEngine.InputSystem.UI.InputSystemUIInputModule));
-            Object.DontDestroyOnLoad(eventSystemGo);
+            if (Application.isPlaying)
+            {
+                Object.DontDestroyOnLoad(eventSystemGo);
+            }
+
             return;
         }
 

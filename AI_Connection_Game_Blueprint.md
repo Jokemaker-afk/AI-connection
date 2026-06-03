@@ -11,7 +11,7 @@
 ## 0. 一句话定位
 
 **AI Connection** 是一款以 Unity 制作为核心的 3D 轻生存建造探索游戏。  
-玩家从教学关卡开始学习移动、跑酷、Buff、拾取、背包等基础系统，随后进入半随机生成的 AI 区域，通过探索、收集资源、建造装置、解锁科技树、强化角色与基地，逐步深入更危险的区域，最终完成对 AI 核心的修复、连接或关闭。
+玩家从分段教学关卡开始学习移动、跑酷、Buff、拾取、背包、制造与手持工具等系统，随后进入半随机生成的 AI 区域，通过探索、收集资源、建造装置、解锁科技树、强化角色与基地，逐步深入更危险的区域，最终完成对 AI 核心的修复、连接或关闭。
 
 ---
 
@@ -29,8 +29,8 @@
   - 护盾 Buff
 - HUD 与 Buff 显示
 - 关卡切换流程
-- Level1 至 Level4 基础关卡链路
-- Level4 拾取系统
+- Level1 至 Level4 基础系统分段教学链路
+- Level4 拾取与背包系统
 - 工具栏与背包系统
 - 物品堆叠、拖拽、交换
 - Unity 菜单自动生成关卡的工具入口
@@ -43,7 +43,7 @@
 
 ### 2.1 不推倒重来
 
-已有的 Level1 至 Level4 保留，并改造成正式的教学阶段。
+已有的 Level1 至 Level4 保留，并作为**分段教学关**——每一关只教一类核心系统，而不是在前四关内讲完所有基础内容。制造、手持工具等系统分别在 Level5、Level6 独立教学。
 
 ### 2.2 先形成闭环，再扩展内容
 
@@ -130,11 +130,28 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 
 ## 4. 游戏阶段规划
 
-整个游戏可以分为 6 个主要阶段。
+### 4.0 关卡总览（Scene / Level 对应）
+
+| 关卡 | 阶段 | 定位 | 核心教学 / 内容 |
+|---|---|---|---|
+| Level1 | Phase 1 | 分段基础教学 | 移动、视角、跳跃 |
+| Level2 | Phase 1 | 分段基础教学 | 跑酷、精力、掉落 |
+| Level3 | Phase 1 | 分段基础教学 | Buff 收集与 HUD |
+| Level4 | Phase 1 | 分段基础教学 | 拾取、背包、工具栏、堆叠、拖拽 |
+| **Level5** | **Phase 2** | **制造教学** | 工作台、配方、制作 UI、材料消耗 |
+| **Level6** | **Phase 2** | **手持工具教学** | 工具栏装备、采矿 / 伐木 / 修复交互 |
+| Level7 | Phase 3 | 正式探索 | 半随机森林 / 数据荒野 |
+| Level8 | Phase 3 | 正式探索 | 矿区 / 深层资源 |
+| Level9~10 + Hub | Phase 4 | 基地成长 | 科技树、存储、传送 |
+| Level11~13 | Phase 5 | 中后期探索 | 半随机区域、词缀、撤离 |
+| Level14 | Phase 6 | 最终前置 | AI Core 准备关 |
+| Final | Phase 7 | 结局 | AI Core 与最终选择 |
+
+整个游戏可以分为 **7** 个主要阶段。
 
 ---
 
-# Phase 1：基础教学阶段
+# Phase 1：基础系统分段教学
 
 对应当前：
 
@@ -143,7 +160,8 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 - Level3
 - Level4
 
-目标：让玩家理解游戏的全部基础操作。
+目标：让玩家逐步掌握移动、跑酷、Buff、拾取与背包等**基础操作**。  
+**注意：Level1~4 并不覆盖全部基础玩法**；制造与手持工具将在 Level5、Level6 单独教学。
 
 ---
 
@@ -257,11 +275,11 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 
 ---
 
-## 4.4 Level4：拾取、背包、建造教学
+## 4.4 Level4：拾取与背包教学
 
 ### 目标
 
-将当前 Level4 从“系统验证关”升级为第一个完整轻生存关卡。
+教玩家掌握拾取、工具栏、背包、堆叠与拖拽交换。**本关不负责制造或手持工具使用**，只建立物品管理基础。
 
 ### 当前已有系统
 
@@ -273,62 +291,158 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 - 拖拽交换
 - 同类堆叠
 - 工具栏优先入包
+- 右键拆分取物
 
-### 新增目标
-
-Level4 应加入一个明确胜利条件：
-
-> 收集基础资源，制作 Signal Beacon，修复或激活传送门，进入 Level5。
-
-### 推荐资源
+### 推荐资源（本关仅收集，不要求制作）
 
 | 资源 | 用途 |
 |---|---|
-| Wood Block | 基础建造 |
-| Stone Block | 建造与强化 |
-| Energy Fragment | 科技研究 |
-| Metal Scrap | 工具与装置 |
-| Data Core | 关卡目标材料 |
-
-### 推荐制作物
-
-| 制作物 | 用途 |
-|---|---|
-| Small Medkit | 回复生命 |
-| Crafting Bench | 解锁基础制作 |
-| Storage Box | 存放物品 |
-| Signal Beacon | 激活下一关传送门 |
+| Wood Block | 后续制造材料 |
+| Stone Block | 后续制造材料 |
+| Energy Fragment | 后续科技研究 |
+| Metal Scrap | 后续工具与装置 |
+| Data Fragment | 本关收集目标（可选） |
 
 ### 完成条件
 
 ```text
-收集资源
+在场景中收集足够的基础资源
 ↓
-建造 Crafting Bench
+到达出口 / 激活传送门
 ↓
-制作 Signal Beacon
-↓
-放置 Signal Beacon
-↓
-激活传送门
-↓
-按 Y 进入 Level5
+按 Y 进入 Level5（制造教学关）
 ```
 
 ---
 
-# Phase 2：第一次正式探索阶段
+# Phase 2：制造与工具教学
 
 对应：
 
 - Level5
 - Level6
 
+目标：在独立关卡中分别教会玩家**制作物品**与**使用手持工具**，避免 Level1~4 信息过载。
+
+---
+
+## 4.5 Level5：制造教学关
+
+### 定位
+
+第一个正式**制造 / 制作**教学关。玩家在此学习工作台、配方、材料消耗与产出物进入背包的流程。
+
+### 教学内容
+
+- 认识 Crafting Bench（工作台）
+- 打开制作 UI
+- 查看配方所需材料
+- 消耗背包材料制作物品
+- 制作结果进入背包 / 工具栏
+- 同类物品堆叠与材料不足提示
+
+### 推荐场景结构
+
+- 固定小型教学区域
+- 预先放置或引导玩家放置 **Crafting Bench**
+- 周围提供足量基础材料拾取点（Wood / Stone / Metal Scrap 等）
+- 少量 NPC 标牌或 UI 提示说明制作步骤
+
+### 推荐配方（本关必做）
+
+| 制作物 | 用途 |
+|---|---|
+| Small Medkit | 教会在工作台制作消耗品 |
+| Simple Tool Handle | 手持工具零件 |
+| Signal Beacon | 本关通关目标物 |
+
+### 完成条件
+
+```text
+收集指定材料
+↓
+使用 Crafting Bench 打开制作 UI
+↓
+成功制作 Signal Beacon
+↓
+按 Y 进入 Level6（手持工具教学关）
+```
+
+### 本关引入的新系统
+
+- `CraftingSystem` / `RecipeData` 初版
+- `CraftingBench` 交互
+- `CraftingUI` 制作界面
+- 材料检查与制作成功反馈
+
+---
+
+## 4.6 Level6：手持工具教学关
+
+### 定位
+
+第一个正式**手持工具**教学关。玩家在此学习从工具栏选中工具、对场景物体进行交互采集或修复。
+
+### 教学内容
+
+- 将工具放入工具栏并选中（1~9 / 滚轮）
+- 手持工具的视觉反馈（第一/第三人称）
+- 对指定交互点使用工具（例如：矿点、木桩、损坏装置）
+- 工具耐久或次数（可选，初版可简化为无限使用）
+- 工具产出物进入背包
+- 工具与空手 / 其他物品切换
+
+### 推荐场景结构
+
+- 固定教学区域，分 3 个小任务区：
+  1. **采矿区**：用 Pickaxe 采集 Stone / Ore
+  2. **伐木区**：用 Axe 采集 Wood
+  3. **修复区**：用 Repair Tool 修复 Signal Relay 或小型装置
+
+### 推荐手持工具
+
+| 工具 | 用途 |
+|---|---|
+| Pickaxe | 采集矿石 / 石头 |
+| Axe | 采集木材 |
+| Repair Tool | 修复场景装置 |
+
+### 完成条件
+
+```text
+装备并正确使用 Pickaxe 完成一次采矿
+↓
+装备并正确使用 Axe 完成一次伐木
+↓
+使用 Repair Tool 修复目标装置（如 Signal Relay）
+↓
+激活传送门
+↓
+按 Y 进入 Level7（第一次正式探索区域）
+```
+
+### 本关引入的新系统
+
+- `HandheldTool` / `ToolKind` 数据
+- `PlayerToolController` 或扩展 `PlayerInventory` 的使用逻辑
+- `ToolInteractable` 场景交互点
+- 工具栏选中 + 左键 / F 对目标使用
+- 工具使用动画或简单特效（可选）
+
+---
+
+# Phase 3：第一次正式探索阶段
+
+对应：
+
+- Level7
+- Level8
+
 目标：玩家正式进入半随机地图，开始使用科技树。
 
 ---
 
-## 5.1 Level5：随机森林 / 数据荒野区域
+## 5.1 Level7：随机森林 / 数据荒野区域
 
 ### 定位
 
@@ -362,7 +476,7 @@ Level4 应加入一个明确胜利条件：
 ```text
 收集 3 个 Data Core
 建造或修复 Signal Relay
-进入 Level6
+进入 Level8
 ```
 
 ### 新系统
@@ -374,7 +488,7 @@ Level4 应加入一个明确胜利条件：
 
 ---
 
-## 5.2 Level6：矿区 / 深层资源区域
+## 5.2 Level8：矿区 / 深层资源区域
 
 ### 定位
 
@@ -418,17 +532,17 @@ Level4 应加入一个明确胜利条件：
 ↓
 修复 Deep Relay
 ↓
-进入 Phase 3
+进入 Phase 4
 ```
 
 ---
 
-# Phase 3：基地与长期成长阶段
+# Phase 4：基地与长期成长阶段
 
 对应：
 
-- Level7
-- Level8
+- Level9
+- Level10
 - Hub / Base Scene
 
 目标：让玩家拥有长期成长空间。
@@ -577,13 +691,13 @@ Core Access Protocol
 
 ---
 
-# Phase 4：中后期随机区域阶段
+# Phase 5：中后期随机区域阶段
 
 对应：
 
-- Level7
-- Level8
-- Level9
+- Level11
+- Level12
+- Level13
 
 目标：让游戏开始具有重复游玩价值。
 
@@ -667,11 +781,11 @@ Core Access Protocol
 
 ---
 
-# Phase 5：AI Core 前置阶段
+# Phase 6：AI Core 前置阶段
 
 对应：
 
-- Level10
+- Level14
 - Final Preparation
 
 目标：让玩家使用前面所有科技，准备进入最终区域。
@@ -717,7 +831,7 @@ Core Access Protocol
 
 ---
 
-# Phase 6：最终结局阶段
+# Phase 7：最终结局阶段
 
 对应：
 
@@ -943,7 +1057,7 @@ Run Save / Exploration Save
 ```json
 {
   "saveVersion": "0.1",
-  "currentScene": "Level5",
+  "currentScene": "Level7",
   "player": {
     "position": [0, 2, 0],
     "health": 80,
@@ -1251,14 +1365,16 @@ NextQuestId
 Q1 Learn Movement
 Q2 Complete Parkour Trial
 Q3 Collect Four Buff Modules
-Q4 Build First Signal Beacon
-Q5 Explore Random Forest Zone
-Q6 Unlock First Tech Node
-Q7 Repair Deep Relay
-Q8 Build Base Generator
-Q9 Unlock Core Access Protocol
-Q10 Enter AI Core
-Q11 Make Final Choice
+Q4 Master Inventory and Hotbar
+Q5 Craft First Items at Workbench
+Q6 Learn Handheld Tools
+Q7 Explore Random Forest Zone
+Q8 Unlock First Tech Node
+Q9 Repair Deep Relay
+Q10 Build Base Generator
+Q11 Unlock Core Access Protocol
+Q12 Enter AI Core
+Q13 Make Final Choice
 ```
 
 ---
@@ -1286,38 +1402,89 @@ Level4 背包正常拾取与拖拽
 
 ---
 
-## 14.2 Milestone 2：Level4 完整闭环
+## 14.2 Milestone 2：Level4 拾取与背包教学闭环
 
 目标：
 
 ```text
-让 Level4 成为第一个正式生存建造教学关
+让 Level4 成为正式的拾取与背包教学关（不含制造与手持工具）
 ```
 
 需要完成：
 
 ```text
-资源类型重命名
-加入 Crafting Bench
-加入 Small Medkit
-加入 Signal Beacon
-加入制作 UI
-加入建造/放置逻辑
-加入胜利条件
+Level4 明确胜利条件（收集资源 + 到达出口）
+拾取 / 背包 / 工具栏 / 堆叠 / 拖拽 / 右键拆分验证通过
+LevelManager 配置 Level4 → Level5
 ```
 
 完成标准：
 
 ```text
-玩家可以收集资源
-制作 Signal Beacon
-放置 Signal Beacon
-进入 Level5
+玩家可以在 Level4 完成拾取与背包教学
+按 Y 进入 Level5
 ```
 
 ---
 
-## 14.3 Milestone 3：科技树初版
+## 14.3 Milestone 3：Level5 制造教学关
+
+目标：
+
+```text
+完成第一个正式制造 / 制作教学关
+```
+
+需要完成：
+
+```text
+CraftingSystem / RecipeData 初版
+CraftingBench 交互
+CraftingUI 制作界面
+Small Medkit / Signal Beacon 等教学配方
+Level5 场景与胜利条件
+LevelManager 配置 Level5 → Level6
+```
+
+完成标准：
+
+```text
+玩家可以在 Level5 使用工作台制作指定物品
+成功制作 Signal Beacon 后进入 Level6
+```
+
+---
+
+## 14.4 Milestone 4：Level6 手持工具教学关
+
+目标：
+
+```text
+完成第一个正式手持工具教学关
+```
+
+需要完成：
+
+```text
+HandheldTool / ToolKind 数据
+PlayerToolController 或等效使用逻辑
+ToolInteractable 场景交互点
+Pickaxe / Axe / Repair Tool 至少三种工具
+工具栏选中 + 对目标使用
+Level6 场景与胜利条件
+LevelManager 配置 Level6 → Level7
+```
+
+完成标准：
+
+```text
+玩家可以在 Level6 装备工具并完成采矿 / 伐木 / 修复教学任务
+完成后进入 Level7
+```
+
+---
+
+## 14.5 Milestone 5：科技树初版
 
 目标：
 
@@ -1345,7 +1512,7 @@ TechTreeUI
 
 ---
 
-## 14.4 Milestone 4：存档系统初版
+## 14.6 Milestone 6：存档系统初版
 
 目标：
 
@@ -1375,7 +1542,7 @@ SaveData
 
 ---
 
-## 14.5 Milestone 5：Level5 半随机地图
+## 14.7 Milestone 7：Level7 半随机地图
 
 目标：
 
@@ -1398,13 +1565,13 @@ LevelGenerator
 完成标准：
 
 ```text
-每次进入 Level5 地图布局有变化
+每次进入 Level7 地图布局有变化
 但玩家一定可以完成目标
 ```
 
 ---
 
-## 14.6 Milestone 6：基地系统初版
+## 14.8 Milestone 8：基地系统初版
 
 目标：
 
@@ -1432,7 +1599,7 @@ Teleport Console
 
 ---
 
-## 14.7 Milestone 7：中期内容扩展
+## 14.9 Milestone 9：中期内容扩展
 
 目标：
 
@@ -1443,8 +1610,8 @@ Teleport Console
 需要完成：
 
 ```text
-Level6 矿区
-Level7 废墟
+Level8 矿区
+Level11 废墟
 高级资源
 敌人或环境伤害
 区域词缀
@@ -1460,7 +1627,7 @@ Level7 废墟
 
 ---
 
-## 14.8 Milestone 8：最终关与结局
+## 14.10 Milestone 10：最终关与结局
 
 目标：
 
@@ -1494,15 +1661,16 @@ Return to Main Menu
 后续每次更新 `Project_Guide.md` 时，建议同步检查以下内容：
 
 1. 当前已有系统是否发生变化
-2. Level1-Level4 是否仍然作为教学关
-3. Level4 是否已经形成完整闭环
-4. 科技树是否已经实现
-5. 存档系统保存了哪些内容
-6. 随机地图是否已经加入
-7. 新增脚本是否需要写入脚本地图
-8. 新增资源、建筑、科技节点是否需要更新表格
-9. 当前开发 Milestone 到了哪一步
-10. 是否需要调整最终结局规划
+2. Level1~Level4 是否仍作为**分段**基础系统教学关（非全部基础内容）
+3. Level5 / Level6 制造与手持工具教学是否已实现
+4. Level4 是否已经形成拾取与背包闭环
+5. 科技树是否已经实现
+6. 存档系统保存了哪些内容
+7. Level7 及之后随机地图是否已经加入
+8. 新增脚本是否需要写入脚本地图
+9. 新增资源、建筑、科技节点是否需要更新表格
+10. 当前开发 Milestone 到了哪一步
+11. 是否需要调整最终结局规划
 
 ---
 
@@ -1513,23 +1681,20 @@ Return to Main Menu
 当前最优先任务是：
 
 ```text
-把 Level4 从背包测试关升级为完整玩法闭环关卡。
+先完成 Level4 拾取与背包教学闭环，再依次实现 Level5 制造教学关与 Level6 手持工具教学关。
 ```
 
 具体顺序：
 
 ```text
-1. 增加真实资源类型
-2. 增加可使用物品
-3. 增加 Crafting Bench
-4. 增加 Signal Beacon
-5. 增加制作 UI
-6. 增加 Level4 胜利条件
-7. 增加最基础自动存档
-8. 进入 Level5
+1. Level4：明确胜利条件，配置进入 Level5
+2. Level5：Crafting Bench + 制作 UI + 教学配方 + 进入 Level6
+3. Level6：手持工具 + 场景交互 + 修复任务 + 进入 Level7
+4. 增加最基础自动存档
+5. Level7：第一个半随机探索区域
 ```
 
-完成这一步后，游戏才真正从“功能原型”变成“可玩的基础版本”。
+完成 Level4~Level6 后，玩家才完整掌握「拾取 → 制造 → 使用工具 → 探索」的基础链路，游戏从“功能原型”升级为“可玩的基础版本”。
 
 ---
 
@@ -1538,8 +1703,9 @@ Return to Main Menu
 本项目建议发展为：
 
 > 以 AI 数字世界为主题的轻生存建造探索游戏。  
-> 前四关作为教学关，玩家学习移动、跑酷、Buff、拾取、背包等基础系统。  
-> 之后进入半随机生成的探索区域，通过收集资源、建造设施、解锁科技树和升级基地持续成长。  
+> **Level1~Level4** 为分段基础系统教学（移动、跑酷、Buff、拾取与背包），**不包含全部基础玩法**。  
+> **Level5** 专门教学制造 / 制作，**Level6** 专门教学手持工具使用。  
+> 从 **Level7** 起进入半随机生成的探索区域，通过收集资源、建造设施、解锁科技树和升级基地持续成长。  
 > 游戏中途通过存档系统记录玩家进度，包括关卡、背包、科技树、基地、随机地图 Seed 等。  
 > 最终玩家进入 AI Core，完成修复、关闭或融合 AI 的最终选择，从而达成明确结局。
 

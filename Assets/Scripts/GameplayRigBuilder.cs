@@ -75,6 +75,16 @@ public static class GameplayRigBuilder
             player.AddComponent<PlayerPickupInteractor>();
         }
 
+        if (player.GetComponent<PlayerCraftingInteractor>() == null)
+        {
+            player.AddComponent<PlayerCraftingInteractor>();
+        }
+
+        if (player.GetComponent<PlayerPlacementController>() == null)
+        {
+            player.AddComponent<PlayerPlacementController>();
+        }
+
         var characterController = player.GetComponent<CharacterController>();
         if (characterController != null)
         {
@@ -83,6 +93,7 @@ public static class GameplayRigBuilder
 
         player.transform.position = spawn;
         player.transform.rotation = Quaternion.identity;
+        GameplayLayers.TrySetPlayerLayer(player);
     }
 
     static void EnsureMainCamera()
