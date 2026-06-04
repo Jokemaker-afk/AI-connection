@@ -57,12 +57,39 @@ public class PlayerInventory : MonoBehaviour
             return false;
         }
 
+        if (!ItemKindUtility.IsStackable(kind))
+        {
+            return CountEmptySlots() >= amount;
+        }
+
         int remaining = amount;
         remaining = SimulateStack(hotbar, kind, remaining);
         remaining = SimulateStack(backpack, kind, remaining);
         remaining = SimulateFillEmpty(hotbar, kind, remaining);
         remaining = SimulateFillEmpty(backpack, kind, remaining);
         return remaining <= 0;
+    }
+
+    public int CountEmptySlots()
+    {
+        int count = 0;
+        for (int i = 0; i < HotbarSize; i++)
+        {
+            if (hotbar[i].IsEmpty)
+            {
+                count++;
+            }
+        }
+
+        for (int i = 0; i < BackpackSize; i++)
+        {
+            if (backpack[i].IsEmpty)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     public InventorySlotData GetHotbarSlot(int index)

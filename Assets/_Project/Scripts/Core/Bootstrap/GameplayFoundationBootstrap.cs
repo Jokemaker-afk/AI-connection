@@ -57,7 +57,13 @@ public static class GameplayFoundationBootstrap
         lastBootstrappedScene = sceneName;
 
         GameplayCore core = GameplayCore.EnsureExists();
+        core.ProgressionState.EnsureCharacterProgressionInitialized(sceneName);
         core.Log($"Scene loaded: {sceneName}");
+
+        if (GameplaySceneCatalog.GetLevelNumber(sceneName) == 6 && !core.ProgressionState.HasPersistentState)
+        {
+            core.Log("Scene6 direct play detected — bootstrapping persistent gameplay foundation.");
+        }
 
         PersistentPlayerRig rig = PersistentPlayerRig.EnsureOnGameplayCore(core);
 
@@ -72,6 +78,11 @@ public static class GameplayFoundationBootstrap
         GameplayHudBootstrap.EnsureGameplayHud();
 
         ApplyPlayerProgression(core, sceneName, createdNewPlayer);
+
+        core.Abilities.EnsureBaselineAbilitiesForScene(
+            sceneName,
+            core.ProgressionState != null ? core.ProgressionState.CurrentLevelIndex : 0);
+        GameplayPlacementBootstrap.EnsureInitialized(sceneName);
         rig.RebindSceneSystems();
 
         EnsureLevelSpecificContent(sceneName);

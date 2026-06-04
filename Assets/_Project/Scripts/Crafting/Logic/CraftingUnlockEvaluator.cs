@@ -118,17 +118,63 @@ public static class CraftingUnlockEvaluator
 
     static CraftingUnlockResult EvaluateCraftability(CraftingRecipe recipe, PlayerInventory inventory)
     {
-        if (!inventory.HasIngredients(recipe.Ingredients))
+        if (!CraftingIngredientDiagnostics.HasAllIngredients(inventory, recipe.Ingredients))
         {
-            return CraftingUnlockResult.Unlocked(false, CraftingLockReason.MissingMaterials, "材料不足。");
+            string missingMessage = CraftingIngredientDiagnostics.BuildMissingMessage(inventory, recipe.Ingredients);
+            if (string.IsNullOrEmpty(missingMessage))
+            {
+                missingMessage = "材料不足。";
+            }
+
+            missingMessage = AppendCraftingHint(recipe, missingMessage);
+            return CraftingUnlockResult.Unlocked(false, CraftingLockReason.MissingMaterials, missingMessage);
         }
 
         if (!inventory.CanAcceptItem(recipe.Output, recipe.OutputCount))
         {
-            return CraftingUnlockResult.Unlocked(false, CraftingLockReason.InventoryFull, "背包已满。");
+            string spaceMessage = ItemKindUtility.IsStackable(recipe.Output)
+                ? "背包已满。"
+                : "没有足够空间（工具需要 1 个空槽位）。";
+            return CraftingUnlockResult.Unlocked(false, CraftingLockReason.InventoryFull, spaceMessage);
         }
 
         return CraftingUnlockResult.Unlocked(true, CraftingLockReason.None, string.Empty);
+    }
+
+    static string AppendCraftingHint(CraftingRecipe recipe, string missingMessage)
+    {
+        if (string.IsNullOrEmpty(missingMessage))
+        {
+            return missingMessage;
+        }
+
+        if (recipe.Category == CraftingRecipeCategory.Tool)
+        {
+            if (missingMessage.Contains("绳子"))
+            {
+                return missingMessage + " → 请点「中间材料」，用 草×2 或 纤维×3 先制作绳子";
+            }
+
+            if (missingMessage.Contains("木棍"))
+            {
+                return missingMessage + " → 请点「中间材料」，用 木材×1 先制作木棍";
+            }
+        }
+
+        if (recipe.Output == ItemKind.Rope)
+        {
+            if (missingMessage.Contains("草"))
+            {
+                return missingMessage + " → F 拾取材料区的草";
+            }
+
+            if (missingMessage.Contains("纤维"))
+            {
+                return missingMessage + " → F 拾取材料区的纤维";
+            }
+        }
+
+        return missingMessage;
     }
 
     public static bool MatchesCraftingContext(CraftingRecipe recipe, WorkstationKind context)

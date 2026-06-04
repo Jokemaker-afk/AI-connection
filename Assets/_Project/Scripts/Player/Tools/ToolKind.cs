@@ -4,4 +4,6 @@ public enum ToolKind
     Pickaxe,
     Axe,
     RepairTool,
+    Knife,
+    Hammer,
 }

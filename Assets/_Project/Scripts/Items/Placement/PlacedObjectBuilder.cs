@@ -146,6 +146,12 @@ public static class PlacedObjectBuilder
             return true;
         }
 
+        if (hit.collider.GetComponentInParent<StaticPlacementGround>() != null && hit.normal.y > 0.35f)
+        {
+            surfaceY = hit.collider.bounds.max.y;
+            return true;
+        }
+
         return false;
     }
 
@@ -198,13 +204,24 @@ public static class PlacedObjectBuilder
                 return false;
             }
 
+            if (overlap.GetComponentInParent<WorldPickupItem>() != null)
+            {
+                continue;
+            }
+
+            if (overlap.GetComponentInParent<StaticPlacementGround>() != null)
+            {
+                continue;
+            }
+
             if (overlap.GetComponentInParent<PlacedPickupable>() != null
                 || overlap.GetComponentInParent<PlacedBuilding>() != null)
             {
                 return false;
             }
 
-            if (overlap.GetComponentInParent<PlacementSurface>() != null)
+            var placementSurface = overlap.GetComponentInParent<PlacementSurface>();
+            if (placementSurface != null && placementSurface.SupportsTopPlacement)
             {
                 return false;
             }

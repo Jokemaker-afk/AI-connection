@@ -7,11 +7,13 @@ using UnityEngine.UI;
 
 public class CraftingHud : MonoBehaviour
 {
-    const float ColumnWidth = 260f;
-    const float PanelHeight = 560f;
-    const float RowHeight = 56f;
-    const float MinPanelWidth = 520f;
-    const float MaxPanelWidth = 1180f;
+    const float ColumnWidth = 300f;
+    const float BasePanelHeight = 720f;
+    const float RowHeight = 70f;
+    const float MinPanelWidth = 680f;
+    const float MaxPanelWidth = 1480f;
+
+    float currentPanelHeight = BasePanelHeight;
 
     PlayerInventory inventory;
     readonly List<WorkstationKind> activeContexts = new List<WorkstationKind>();
@@ -138,8 +140,9 @@ public class CraftingHud : MonoBehaviour
             BuildUi();
         }
 
-        float panelWidth = Mathf.Clamp(ColumnWidth * activeContexts.Count + 48f, MinPanelWidth, MaxPanelWidth);
-        panelRoot.sizeDelta = new Vector2(panelWidth, PanelHeight);
+        currentPanelHeight = GetResponsivePanelHeight();
+        float panelWidth = Mathf.Clamp(ColumnWidth * activeContexts.Count + 64f, MinPanelWidth, MaxPanelWidth);
+        panelRoot.sizeDelta = new Vector2(panelWidth, currentPanelHeight);
 
         if (titleText != null)
         {
@@ -188,7 +191,7 @@ public class CraftingHud : MonoBehaviour
             return;
         }
 
-        panelRoot = CreatePanel(canvas, "CraftingPanel", MinPanelWidth, PanelHeight);
+        panelRoot = CreatePanel(canvas, "CraftingPanel", MinPanelWidth, BasePanelHeight);
         panelRoot.anchorMin = new Vector2(0.5f, 0.5f);
         panelRoot.anchorMax = new Vector2(0.5f, 0.5f);
         panelRoot.pivot = new Vector2(0.5f, 0.5f);
@@ -205,7 +208,7 @@ public class CraftingHud : MonoBehaviour
         titleRect.anchoredPosition = new Vector2(0f, -12f);
         titleRect.sizeDelta = new Vector2(-24f, 32f);
 
-        hintText = CreateText(panelRoot, "Hint", "Esc 关闭  ·  滚轮滚动配方  ·  点击分类筛选", 14, TextAnchor.UpperCenter);
+        hintText = CreateText(panelRoot, "Hint", "Esc 关闭  ·  滚轮滚动配方  ·  Shift+滚轮横向切换工作站列", 14, TextAnchor.UpperCenter);
         var hintRect = hintText.rectTransform;
         hintRect.anchorMin = new Vector2(0f, 1f);
         hintRect.anchorMax = new Vector2(1f, 1f);
@@ -236,8 +239,8 @@ public class CraftingHud : MonoBehaviour
         var scrollRectTransform = scrollGo.GetComponent<RectTransform>();
         scrollRectTransform.anchorMin = new Vector2(0f, 0f);
         scrollRectTransform.anchorMax = new Vector2(1f, 1f);
-        scrollRectTransform.offsetMin = new Vector2(16f, 70f);
-        scrollRectTransform.offsetMax = new Vector2(-16f, -104f);
+        scrollRectTransform.offsetMin = new Vector2(12f, 56f);
+        scrollRectTransform.offsetMax = new Vector2(-12f, -96f);
 
         var scrollBg = scrollGo.GetComponent<Image>();
         scrollBg.color = new Color(0.04f, 0.05f, 0.08f, 0.85f);
@@ -376,7 +379,7 @@ public class CraftingHud : MonoBehaviour
         columnGo.transform.SetParent(parent, false);
 
         var columnRect = columnGo.GetComponent<RectTransform>();
-        columnRect.sizeDelta = new Vector2(ColumnWidth, PanelHeight - 170f);
+        columnRect.sizeDelta = new Vector2(ColumnWidth, currentPanelHeight - 148f);
 
         var columnImage = columnGo.GetComponent<Image>();
         columnImage.color = new Color(0.1f, 0.12f, 0.16f, 0.92f);
@@ -408,7 +411,7 @@ public class CraftingHud : MonoBehaviour
         scrollRectTransform.sizeDelta = new Vector2(ColumnWidth - 16f, 0f);
         var scrollLayout = scrollGo.AddComponent<LayoutElement>();
         scrollLayout.flexibleHeight = 1f;
-        scrollLayout.minHeight = 320f;
+        scrollLayout.minHeight = Mathf.Max(420f, currentPanelHeight - 220f);
 
         var scrollBg = scrollGo.GetComponent<Image>();
         scrollBg.color = new Color(0.06f, 0.07f, 0.1f, 0.65f);
@@ -466,6 +469,11 @@ public class CraftingHud : MonoBehaviour
         }
     }
 
+    static float GetResponsivePanelHeight()
+    {
+        return Mathf.Clamp(Screen.height * 0.82f, 680f, 920f);
+    }
+
     RecipeRowView CreateRecipeRow(RectTransform parent, CraftingRecipe recipe, WorkstationKind context, int index)
     {
         var rowGo = new GameObject($"RecipeRow_{index}", typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
@@ -475,8 +483,8 @@ public class CraftingHud : MonoBehaviour
         rowImage.color = new Color(0.14f, 0.16f, 0.2f, 0.95f);
 
         var layoutElement = rowGo.GetComponent<LayoutElement>();
-        layoutElement.minHeight = RowHeight + 8f;
-        layoutElement.preferredHeight = RowHeight + 8f;
+        layoutElement.minHeight = RowHeight + 12f;
+        layoutElement.preferredHeight = RowHeight + 12f;
 
         var layout = rowGo.GetComponent<HorizontalLayoutGroup>();
         layout.padding = new RectOffset(8, 8, 6, 6);
@@ -525,9 +533,16 @@ public class CraftingHud : MonoBehaviour
         ingredientLayout.minHeight = 18f;
         ingredientLayout.flexibleHeight = 1f;
 
+        var metaText = CreateText(textColumn.transform, "Meta",
+            $"分类：{CraftingRecipeDisplayUtility.GetCategoryDisplayName(recipe.Category)}",
+            12, TextAnchor.MiddleLeft);
+        metaText.color = new Color(0.62f, 0.66f, 0.72f);
+        var metaLayout = metaText.gameObject.AddComponent<LayoutElement>();
+        metaLayout.minHeight = 16f;
+
         var craftButton = CreateButton(rowGo.transform, "CraftButton", "制作", Vector2.zero);
         var buttonRect = craftButton.GetComponent<RectTransform>();
-        buttonRect.sizeDelta = new Vector2(64f, 32f);
+        buttonRect.sizeDelta = new Vector2(72f, 36f);
 
         var rowView = new RecipeRowView
         {
@@ -584,9 +599,22 @@ public class CraftingHud : MonoBehaviour
         CraftingUnlockResult result = CraftingManager.Evaluate(inventory, row.Recipe, row.Context);
         bool unlocked = result.IsUnlocked;
         bool canCraft = result.CanCraftNow;
+        bool hasMaterials = CraftingIngredientDiagnostics.HasAllIngredients(inventory, row.Recipe.Ingredients);
+        bool hasOutputSpace = inventory != null && inventory.CanAcceptItem(row.Recipe.Output, row.Recipe.OutputCount);
 
         row.Root.gameObject.SetActive(true);
         row.CraftButton.interactable = canCraft;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (row.Recipe.Category == CraftingRecipeCategory.Tool && !canCraft && unlocked)
+        {
+            Debug.Log(
+                $"[CraftingUI] {row.Recipe.GetDisplayName()} craftable: {canCraft} | " +
+                $"materials: {hasMaterials} | station: {unlocked && result.LockReason != CraftingLockReason.WrongWorkstationContext} | " +
+                $"outputSpace: {hasOutputSpace} | disabledReason: {result.Message}");
+        }
+#endif
+
         row.Background.color = canCraft
             ? new Color(0.16f, 0.22f, 0.18f, 0.96f)
             : unlocked

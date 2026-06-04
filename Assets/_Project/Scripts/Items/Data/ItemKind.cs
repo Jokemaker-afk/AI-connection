@@ -48,6 +48,9 @@ public enum ItemKind
     Bandage,
     BasicSword,
     KeyFragment,
+    Torch,
+    BasicKnife,
+    Hammer,
 
     // Building materials (placeable)
     WoodWall,
@@ -323,6 +326,16 @@ public static class ItemKindUtility
         }
 
         return default;
+    }
+
+    public static WeaponKind GetWeaponKind(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
+        {
+            return data.WeaponKind;
+        }
+
+        return WeaponKind.None;
     }
 
     public static string GetRequiredToolPrompt(ToolKind required)

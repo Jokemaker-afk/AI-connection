@@ -55,7 +55,11 @@ public static class GameplaySceneCatalog
 
     public static GameplayAbility GetInheritedAbilities(string sceneName)
     {
-        int level = GetLevelNumber(sceneName);
+        return GetInheritedAbilitiesForLevel(GetLevelNumber(sceneName));
+    }
+
+    public static GameplayAbility GetInheritedAbilitiesForLevel(int level)
+    {
         if (level <= 0)
         {
             return GameplayAbility.None;

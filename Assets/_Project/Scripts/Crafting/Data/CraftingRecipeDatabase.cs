@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 public static class CraftingRecipeDatabase
 {
@@ -6,7 +7,7 @@ public static class CraftingRecipeDatabase
 
     static CraftingRecipeDatabase()
     {
-        RegisterHandCraftRecipes();
+        RegisterPersonalRecipes();
         RegisterWorkbenchRecipes();
         RegisterLoomRecipes();
         RegisterFurnaceRecipes();
@@ -14,6 +15,8 @@ public static class CraftingRecipeDatabase
         RegisterAlchemyRecipes();
         RegisterBuildingMaterialRecipes();
         RegisterStorageRecipes();
+
+        CraftingRecipeAuditor.RunAuditAndLog(Recipes);
     }
 
     public static IReadOnlyList<CraftingRecipe> AllRecipes => Recipes;
@@ -45,9 +48,18 @@ public static class CraftingRecipeDatabase
     static void Register(CraftingRecipe recipe)
     {
         Recipes.Add(recipe);
+        Debug.Log(
+            $"[Crafting] Register recipe: {recipe.GetDisplayName()} -> output ItemKind = {recipe.Output} | " +
+            $"source = {WorkstationDetector.GetColumnTitle(NormalizeStation(recipe.RequiredWorkstation))} | " +
+            $"category = {CraftingRecipeCategoryUtility.GetDisplayName(recipe.Category)}");
     }
 
-    static void RegisterHandCraftRecipes()
+    static WorkstationKind NormalizeStation(WorkstationKind station)
+    {
+        return station == WorkstationKind.Player ? WorkstationKind.None : station;
+    }
+
+    static void RegisterPersonalRecipes()
     {
         Register(new CraftingRecipe(
             "plank",
@@ -100,6 +112,121 @@ public static class CraftingRecipeDatabase
             true));
 
         Register(new CraftingRecipe(
+            "cloth",
+            ItemKind.Cloth,
+            1,
+            new[] { new CraftingIngredient(ItemKind.Fiber, 4) },
+            CraftingRecipeCategory.IntermediateMaterial,
+            WorkstationKind.None,
+            BuildingKind.None,
+            true));
+
+        Register(new CraftingRecipe(
+            "bandage_personal",
+            ItemKind.Bandage,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.Cloth, 1),
+                new CraftingIngredient(ItemKind.Berry, 1),
+            },
+            CraftingRecipeCategory.Consumable,
+            WorkstationKind.None,
+            BuildingKind.None,
+            true));
+
+        // Temporary for Level 6 tool tutorial; can later require Workbench.
+        Register(new CraftingRecipe(
+            "stone_axe",
+            ItemKind.StoneAxe,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.Stick, 1),
+                new CraftingIngredient(ItemKind.Stone, 2),
+                new CraftingIngredient(ItemKind.Rope, 1),
+            },
+            CraftingRecipeCategory.Tool,
+            WorkstationKind.None,
+            BuildingKind.None,
+            true));
+
+        Register(new CraftingRecipe(
+            "stone_pickaxe",
+            ItemKind.StonePickaxe,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.Stick, 2),
+                new CraftingIngredient(ItemKind.Stone, 3),
+                new CraftingIngredient(ItemKind.Rope, 1),
+            },
+            CraftingRecipeCategory.Tool,
+            WorkstationKind.None,
+            BuildingKind.None,
+            true));
+
+        Register(new CraftingRecipe(
+            "repair_tool",
+            ItemKind.RepairTool,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.Stick, 1),
+                new CraftingIngredient(ItemKind.Stone, 1),
+                new CraftingIngredient(ItemKind.Rope, 1),
+                new CraftingIngredient(ItemKind.OreFragment, 1),
+            },
+            CraftingRecipeCategory.Tool,
+            WorkstationKind.None,
+            BuildingKind.None,
+            true));
+
+        Register(new CraftingRecipe(
+            "torch",
+            ItemKind.Torch,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.Stick, 1),
+                new CraftingIngredient(ItemKind.Coal, 1),
+            },
+            CraftingRecipeCategory.Consumable,
+            WorkstationKind.None,
+            BuildingKind.None,
+            true));
+
+        Register(new CraftingRecipe(
+            "basic_knife",
+            ItemKind.BasicKnife,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.Stick, 1),
+                new CraftingIngredient(ItemKind.Flint, 1),
+                new CraftingIngredient(ItemKind.Rope, 1),
+            },
+            CraftingRecipeCategory.Weapon,
+            WorkstationKind.None,
+            BuildingKind.None,
+            true));
+
+        Register(new CraftingRecipe(
+            "hammer",
+            ItemKind.Hammer,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.Stick, 1),
+                new CraftingIngredient(ItemKind.Stone, 2),
+                new CraftingIngredient(ItemKind.Rope, 1),
+            },
+            CraftingRecipeCategory.Tool,
+            WorkstationKind.None,
+            BuildingKind.None,
+            true));
+
+        Register(new CraftingRecipe(
             "campfire",
             ItemKind.Campfire,
             1,
@@ -125,40 +252,53 @@ public static class CraftingRecipeDatabase
             BuildingKind.None,
             true,
             TechnologyKind.BasicSurvival));
+
+        // Temporary personal fallback when Workbench is unavailable.
+        Register(new CraftingRecipe(
+            "simple_backpack_personal",
+            ItemKind.SimpleBackpack,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.Cloth, 2),
+                new CraftingIngredient(ItemKind.Rope, 2),
+            },
+            CraftingRecipeCategory.Storage,
+            WorkstationKind.None,
+            BuildingKind.None,
+            true));
+
+        Register(new CraftingRecipe(
+            "furnace_personal",
+            ItemKind.Furnace,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.Stone, 6),
+                new CraftingIngredient(ItemKind.Coal, 2),
+            },
+            CraftingRecipeCategory.Workstation,
+            WorkstationKind.None,
+            BuildingKind.None,
+            true));
+
+        Register(new CraftingRecipe(
+            "wood_chest_personal",
+            ItemKind.WoodChest,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.Plank, 4),
+                new CraftingIngredient(ItemKind.Rope, 1),
+            },
+            CraftingRecipeCategory.Storage,
+            WorkstationKind.None,
+            BuildingKind.None,
+            true));
     }
 
     static void RegisterWorkbenchRecipes()
     {
-        Register(new CraftingRecipe(
-            "stone_axe",
-            ItemKind.StoneAxe,
-            1,
-            new[]
-            {
-                new CraftingIngredient(ItemKind.Stick, 1),
-                new CraftingIngredient(ItemKind.Stone, 2),
-                new CraftingIngredient(ItemKind.Rope, 1),
-            },
-            CraftingRecipeCategory.Tool,
-            WorkstationKind.Workbench,
-            BuildingKind.Workbench,
-            technologies: new[] { TechnologyKind.Stonework }));
-
-        Register(new CraftingRecipe(
-            "stone_pickaxe",
-            ItemKind.StonePickaxe,
-            1,
-            new[]
-            {
-                new CraftingIngredient(ItemKind.Stick, 2),
-                new CraftingIngredient(ItemKind.Stone, 3),
-                new CraftingIngredient(ItemKind.Rope, 1),
-            },
-            CraftingRecipeCategory.Tool,
-            WorkstationKind.Workbench,
-            BuildingKind.Workbench,
-            technologies: new[] { TechnologyKind.Stonework }));
-
         Register(new CraftingRecipe(
             "simple_backpack",
             ItemKind.SimpleBackpack,
@@ -168,7 +308,7 @@ public static class CraftingRecipeDatabase
                 new CraftingIngredient(ItemKind.Cloth, 2),
                 new CraftingIngredient(ItemKind.Rope, 2),
             },
-            CraftingRecipeCategory.Tool,
+            CraftingRecipeCategory.Storage,
             WorkstationKind.Workbench,
             BuildingKind.Workbench,
             technologies: new[] { TechnologyKind.Woodworking }));
@@ -246,12 +386,40 @@ public static class CraftingRecipeDatabase
             WorkstationKind.Workbench,
             BuildingKind.Workbench,
             technologies: new[] { TechnologyKind.Metalworking }));
+
+        Register(new CraftingRecipe(
+            "basic_sword_workbench",
+            ItemKind.BasicSword,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.Stick, 1),
+                new CraftingIngredient(ItemKind.MetalIngot, 2),
+            },
+            CraftingRecipeCategory.Weapon,
+            WorkstationKind.Workbench,
+            BuildingKind.Workbench,
+            technologies: new[] { TechnologyKind.Metalworking, TechnologyKind.BasicCombat }));
+
+        Register(new CraftingRecipe(
+            "key_fragment_workbench",
+            ItemKind.KeyFragment,
+            1,
+            new[]
+            {
+                new CraftingIngredient(ItemKind.MetalIngot, 1),
+                new CraftingIngredient(ItemKind.Stone, 2),
+            },
+            CraftingRecipeCategory.Progression,
+            WorkstationKind.Workbench,
+            BuildingKind.Workbench,
+            technologies: new[] { TechnologyKind.Metalworking }));
     }
 
     static void RegisterLoomRecipes()
     {
         Register(new CraftingRecipe(
-            "cloth",
+            "cloth_loom",
             ItemKind.Cloth,
             1,
             new[] { new CraftingIngredient(ItemKind.Fiber, 4) },
@@ -400,7 +568,7 @@ public static class CraftingRecipeDatabase
             1,
             new[]
             {
-                new CraftingIngredient(ItemKind.Plank, 6),
+                new CraftingIngredient(ItemKind.Plank, 4),
                 new CraftingIngredient(ItemKind.Rope, 1),
             },
             CraftingRecipeCategory.Storage,

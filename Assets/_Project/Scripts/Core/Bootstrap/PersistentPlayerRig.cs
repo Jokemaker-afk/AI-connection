@@ -136,6 +136,7 @@ public class PersistentPlayerRig : MonoBehaviour
         }
 
         GameplayHudBootstrap.BindAll();
+        GameplayPlacementBootstrap.EnsureInitialized();
         player.GetComponent<PlayerToolController>()?.RefreshEquippedTool();
         player.GetComponent<PlayerHeldItemController>()?.RefreshHeldItem();
 

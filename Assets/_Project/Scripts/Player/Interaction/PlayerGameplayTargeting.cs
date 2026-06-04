@@ -53,8 +53,8 @@ public class PlayerGameplayTargeting : MonoBehaviour
     public bool CanPickupWorldTarget => pickupTargeting != null && pickupTargeting.CanPickupSelected;
     public bool HasIdentifiedWorldPickup => HasWorldPickup;
     public bool HasPlacedPickup => placedPickup != null;
-    public bool HasRecoverablePlacedTarget => placedPickup != null && placedPickup.IsRecoverableTarget;
-    public bool HasCraftingStation => craftingStation != null;
+    public bool HasRecoverablePlacedTarget => GetPlacedTargetForF() != null;
+    public bool HasCraftingStation => GetCraftingStationForE() != null;
     public bool HasAnyTarget => HasWorldPickup || HasRecoverablePlacedTarget || HasCraftingStation || HasToolInteractable;
     public bool IsWorldPickupTooFar => HasWorldPickup && !CanPickupWorldTarget;
     public PlayerPickupTargeting PickupTargeting => pickupTargeting;
@@ -188,7 +188,38 @@ public class PlayerGameplayTargeting : MonoBehaviour
     }
 
     public bool HasInteractableCraftingStation =>
-        craftingStation != null && GetHorizontalDistance(craftingStation.transform) <= maxInteractionDistance;
+        GetCraftingStationForE() != null
+        && GetHorizontalDistance(GetCraftingStationForE().transform) <= maxInteractionDistance;
+
+    public PlacedPickupable GetPlacedTargetForF()
+    {
+        if (HasWorldPickup && CanPickupWorldTarget)
+        {
+            return null;
+        }
+
+        if (placedPickup == null || !placedPickup.IsRecoverableTarget)
+        {
+            return null;
+        }
+
+        return placedPickup;
+    }
+
+    public PlacedPickupable GetPlacedTargetForRecoveryPrompt()
+    {
+        return GetPlacedTargetForF();
+    }
+
+    public CraftingStation GetCraftingStationForE()
+    {
+        return craftingStation;
+    }
+
+    public bool IsWorkstationPlacedTarget(PlacedPickupable placed)
+    {
+        return GameplayTargetingPriority.IsWorkstationPlaced(placed);
+    }
 
     void SyncInteractionComponents()
     {
@@ -431,14 +462,13 @@ public class PlayerGameplayTargeting : MonoBehaviour
 
     void FinalizeTargetPriority()
     {
-        if (placedPickup != null && placedPickup.IsRecoverableTarget)
-        {
-            worldPickup = null;
-        }
-        else
+        if (placedPickup != null && !placedPickup.IsRecoverableTarget)
         {
             placedPickup = null;
         }
+
+        PlacedPickupable fPlaced = GetPlacedTargetForF();
+        GameplayTargetingPriority.LogFPriorityDecision(worldPickup, placedPickup, fPlaced, logPlacedTargeting);
     }
 
     float GetRaycastRange()

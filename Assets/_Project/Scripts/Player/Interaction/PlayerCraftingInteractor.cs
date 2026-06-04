@@ -57,7 +57,7 @@ public class PlayerCraftingInteractor : MonoBehaviour
 
         if (targeting != null && targeting.HasCraftingStation)
         {
-            string name = PlayerGameplayTargeting.GetStationDisplayName(targeting.CraftingStation);
+            string name = PlayerGameplayTargeting.GetStationDisplayName(targeting.GetCraftingStationForE());
             return $"按 E 使用：{name}";
         }
 

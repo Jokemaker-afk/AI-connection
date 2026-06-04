@@ -343,13 +343,26 @@ public static class ModularLevelAssembler
         }
 
         var interactable = root.AddComponent<ToolInteractable>();
-        interactable.Configure(
-            definition.ToolKind,
-            definition.DisplayLabelChinese,
-            $"使用{ItemKindUtility.GetRequiredToolPrompt(definition.ToolKind)}",
-            definition.ToolOutputItemKind,
-            definition.ToolOutputAmount,
-            definition.ToolTaskId);
+        if (definition.ToolOutputItemKind != ItemKind.None && definition.ToolOutputAmount > 0)
+        {
+            interactable.ConfigureResource(
+                definition.ToolKind,
+                definition.DisplayLabelChinese,
+                $"使用{ItemKindUtility.GetRequiredToolPrompt(definition.ToolKind)}",
+                new[] { new ToolReward(definition.ToolOutputItemKind, definition.ToolOutputAmount, definition.ToolOutputAmount) },
+                definition.ToolTaskId,
+                dropToWorld: true,
+                addToInventory: false);
+        }
+        else
+        {
+            interactable.ConfigureEventTrigger(
+                definition.ToolKind,
+                definition.DisplayLabelChinese,
+                $"使用{ItemKindUtility.GetRequiredToolPrompt(definition.ToolKind)}",
+                definition.ToolTaskId,
+                definition.ToolTaskId);
+        }
 
         ItemWorldLabel.Create(root.transform, definition.DisplayLabelChinese, Vector3.up * 1f, 0.1f);
     }

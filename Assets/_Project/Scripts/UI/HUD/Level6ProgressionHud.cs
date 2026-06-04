@@ -7,6 +7,7 @@ public class Level6ProgressionHud : MonoBehaviour
 
     RectTransform panelRoot;
     Text objectiveText;
+    PlayerInventory trackedInventory;
 
     void Awake()
     {
@@ -24,6 +25,7 @@ public class Level6ProgressionHud : MonoBehaviour
     void OnDisable()
     {
         Unsubscribe();
+        UnsubscribeInventory();
     }
 
     public void BindTo(Level6ProgressionManager manager)
@@ -56,6 +58,8 @@ public class Level6ProgressionHud : MonoBehaviour
             progressionManager.OnPortalActivated -= RefreshObjective;
             progressionManager.OnPortalActivated += RefreshObjective;
         }
+
+        SubscribeInventory();
     }
 
     void Unsubscribe()
@@ -72,6 +76,37 @@ public class Level6ProgressionHud : MonoBehaviour
         }
     }
 
+    void SubscribeInventory()
+    {
+        PlayerInventory inventory = ResolvePlayerInventory();
+        if (inventory == trackedInventory)
+        {
+            return;
+        }
+
+        UnsubscribeInventory();
+        trackedInventory = inventory;
+        if (trackedInventory != null)
+        {
+            trackedInventory.OnInventoryChanged += RefreshObjective;
+        }
+    }
+
+    void UnsubscribeInventory()
+    {
+        if (trackedInventory != null)
+        {
+            trackedInventory.OnInventoryChanged -= RefreshObjective;
+            trackedInventory = null;
+        }
+    }
+
+    PlayerInventory ResolvePlayerInventory()
+    {
+        var player = PersistentPlayerRig.Player ?? GameObject.Find("Player");
+        return player != null ? player.GetComponent<PlayerInventory>() : null;
+    }
+
     void RefreshObjective()
     {
         if (objectiveText == null)
@@ -79,6 +114,7 @@ public class Level6ProgressionHud : MonoBehaviour
             return;
         }
 
+        SubscribeInventory();
         string text = BuildObjectiveText();
         GameplayChineseText.PrepareUiText(objectiveText, text);
         panelRoot.gameObject.SetActive(!string.IsNullOrEmpty(text));
@@ -97,22 +133,44 @@ public class Level6ProgressionHud : MonoBehaviour
             return "目标：前往传送门，按 Y 进入第七关";
         }
 
+        PlayerInventory inventory = ResolvePlayerInventory();
+        if (!Level6CraftingProgress.HasAllBasicTools(inventory))
+        {
+            if (inventory != null && !HasIntermediateMaterialsForTools(inventory))
+            {
+                return "目标：先在「中间材料」制造木棍和绳子，再制造工具";
+            }
+
+            string missing = Level6CraftingProgress.BuildMissingToolsSummary(inventory);
+            if (string.IsNullOrEmpty(missing))
+            {
+                return "目标：收集材料并制造基础工具";
+            }
+
+            return $"目标：收集材料并制造基础工具（缺少：{missing}）";
+        }
+
         if (!tracker.IsTaskComplete(Level6TaskProgressTracker.MineOnceTaskId))
         {
-            return "目标：选择石镐并采矿一次";
+            return "目标：使用石镐采矿一次";
         }
 
         if (!tracker.IsTaskComplete(Level6TaskProgressTracker.ChopOnceTaskId))
         {
-            return "目标：选择石斧并伐木一次";
+            return "目标：使用石斧伐木一次";
         }
 
         if (!tracker.IsTaskComplete(Level6TaskProgressTracker.RepairSignalRelayTaskId))
         {
-            return "目标：选择修理工具并修复信号中继器";
+            return "目标：使用修理工具修复信号中继器";
         }
 
         return "目标：前往传送门，按 Y 进入第七关";
+    }
+
+    static bool HasIntermediateMaterialsForTools(PlayerInventory inventory)
+    {
+        return inventory.CountItem(ItemKind.Stick) > 0 && inventory.CountItem(ItemKind.Rope) > 0;
     }
 
     void BuildUi()

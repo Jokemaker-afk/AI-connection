@@ -34,6 +34,9 @@ public static class PlayerRootComponents
         EnsureComponent<PlayerItemDropController>(playerRoot);
         EnsureComponent<PlayerController>(playerRoot);
         EnsureComponent<PlayerVisualSwitcher>(playerRoot);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        EnsureComponent<CraftingDebugRuntime>(playerRoot);
+#endif
 
         PlayerVisualBuilder.EnsurePlayerVisual(playerRoot);
         GameplayLayers.TrySetPlayerLayer(playerRoot);

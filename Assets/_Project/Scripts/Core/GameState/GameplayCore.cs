@@ -47,6 +47,7 @@ public class GameplayCore : MonoBehaviour
         instance = this;
         DontDestroyOnLoad(gameObject);
         EnsureComponents();
+        GameplayPlacementBootstrap.EnsureInitialized();
     }
 
     void OnDestroy()

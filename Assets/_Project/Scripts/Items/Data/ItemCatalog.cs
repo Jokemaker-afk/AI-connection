@@ -56,6 +56,7 @@ public static class ItemCatalog
         GameObject placedPrefab = null,
         Sprite icon = null,
         HandheldToolProfile handheldTool = default,
+        WeaponKind weaponKind = WeaponKind.None,
         string descriptionChinese = null,
         bool recoverable = true,
         bool craftable = false,
@@ -86,6 +87,7 @@ public static class ItemCatalog
             PlacedPrefab = placedPrefab,
             Icon = icon,
             HandheldTool = handheldTool,
+            WeaponKind = weaponKind,
             FutureModelPrefab = futureModelPrefab,
             FutureTextureReference = futureTextureReference,
         };
@@ -122,7 +124,8 @@ public static class ItemCatalog
         ToolKind toolKind,
         Color color,
         float useCooldown = 0.45f,
-        string descriptionChinese = null)
+        string descriptionChinese = null,
+        WeaponKind weaponKind = WeaponKind.None)
     {
         Register(
             id,
@@ -134,7 +137,8 @@ public static class ItemCatalog
             descriptionChinese: descriptionChinese ?? $"{name}，可用于对应交互目标。",
             recoverable: false,
             craftable: true,
-            handheldTool: CreateDefaultToolProfile(toolKind, useCooldown));
+            handheldTool: CreateDefaultToolProfile(toolKind, useCooldown),
+            weaponKind: weaponKind);
     }
 
     static void RegisterLegacyBlocks()
@@ -216,6 +220,8 @@ public static class ItemCatalog
         RegisterHandheldTool(ItemKind.StonePickaxe, "石镐", ToolKind.Pickaxe, new Color(0.55f, 0.58f, 0.64f), descriptionChinese: "石镐，用于采矿。");
         RegisterHandheldTool(ItemKind.StoneAxe, "石斧", ToolKind.Axe, new Color(0.62f, 0.62f, 0.66f), useCooldown: 0.42f, descriptionChinese: "石斧，用于伐木。");
         RegisterHandheldTool(ItemKind.RepairTool, "修理工具", ToolKind.RepairTool, new Color(0.72f, 0.68f, 0.42f), useCooldown: 0.5f, descriptionChinese: "修理工具，用于修复中继器。");
+        RegisterHandheldTool(ItemKind.BasicKnife, "简易小刀", ToolKind.Knife, new Color(0.68f, 0.72f, 0.78f), useCooldown: 0.35f, descriptionChinese: "简易小刀，可用于切割与近战。");
+        RegisterHandheldTool(ItemKind.Hammer, "锤子", ToolKind.Hammer, new Color(0.58f, 0.52f, 0.48f), useCooldown: 0.48f, descriptionChinese: "锤子，可用于建造与敲击。");
         Register(
             ItemKind.SimpleBackpack,
             "简易背包",
@@ -235,7 +241,8 @@ public static class ItemCatalog
             maxStack: 1,
             descriptionChinese: "基础近战武器。",
             craftable: true,
-            recoverable: false);
+            recoverable: false,
+            weaponKind: WeaponKind.Melee);
     }
 
     static void RegisterConsumables()
@@ -247,6 +254,17 @@ public static class ItemCatalog
             new Color(0.95f, 0.92f, 0.82f),
             maxStack: 16,
             descriptionChinese: "恢复生命值的消耗品。",
+            craftable: true,
+            recoverable: false);
+
+        Register(
+            ItemKind.Torch,
+            "火把",
+            ItemCategory.Consumable,
+            new Color(0.95f, 0.62f, 0.22f),
+            stackable: true,
+            maxStack: 16,
+            descriptionChinese: "火把，可用于照明。",
             craftable: true,
             recoverable: false);
     }

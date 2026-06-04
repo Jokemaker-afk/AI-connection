@@ -7,11 +7,17 @@ public class ToolInteractable : MonoBehaviour
     [SerializeField] ToolKind requiredToolKind = ToolKind.Pickaxe;
     [SerializeField] string displayNameChinese = "交互目标";
     [SerializeField] string interactionPromptChinese = "使用对应工具";
-    [SerializeField] ItemKind outputItemKind = ItemKind.None;
-    [SerializeField] int outputAmount = 1;
+    [SerializeField] string completedPromptChinese = "已完成。";
     [SerializeField] int requiredHits = 1;
-    [SerializeField] bool consumeTargetOnComplete;
+    [SerializeField] bool consumeOrDisableAfterComplete;
     [SerializeField] string taskProgressId;
+    [SerializeField] bool dropRewardsToWorld = true;
+    [SerializeField] bool addRewardsDirectlyToInventory;
+    [SerializeField] Transform rewardDropPoint;
+    [SerializeField] float rewardDropRadius = 0.65f;
+    [SerializeField] bool triggerEventOnComplete;
+    [SerializeField] string eventIdOnComplete;
+    [SerializeField] ToolReward[] rewards = Array.Empty<ToolReward>();
     [SerializeField] AnimationClip hitFeedbackAnimationClip;
     [SerializeField] AnimationClip completedAnimationClip;
     [SerializeField] GameObject realModelPrefabLater;
@@ -24,12 +30,12 @@ public class ToolInteractable : MonoBehaviour
     public ToolKind RequiredToolKind => requiredToolKind;
     public string DisplayNameChinese => displayNameChinese;
     public string InteractionPromptChinese => interactionPromptChinese;
-    public ItemKind OutputItemKind => outputItemKind;
-    public int OutputAmount => outputAmount;
     public string TaskProgressId => taskProgressId;
     public bool IsCompleted => completed;
     public int CurrentHits => currentHits;
     public int RequiredHits => requiredHits;
+    public bool DropRewardsToWorld => dropRewardsToWorld;
+    public bool AddRewardsDirectlyToInventory => addRewardsDirectlyToInventory;
 
     public event Action<ToolInteractable> OnCompleted;
 
@@ -43,20 +49,76 @@ public class ToolInteractable : MonoBehaviour
         int hitsRequired = 1,
         bool consumeOnComplete = false)
     {
+        ConfigureResource(
+            toolKind,
+            displayName,
+            prompt,
+            outputKind == ItemKind.None
+                ? Array.Empty<ToolReward>()
+                : new[] { new ToolReward(outputKind, outputCount, outputCount, 1f) },
+            progressId,
+            hitsRequired,
+            consumeOnComplete,
+            dropToWorld: false,
+            addToInventory: outputKind != ItemKind.None && outputCount > 0);
+    }
+
+    public void ConfigureResource(
+        ToolKind toolKind,
+        string displayName,
+        string prompt,
+        ToolReward[] rewardTable,
+        string progressId,
+        int hitsRequired = 1,
+        bool consumeOnComplete = false,
+        bool dropToWorld = true,
+        bool addToInventory = false)
+    {
         requiredToolKind = toolKind;
         displayNameChinese = displayName;
         interactionPromptChinese = prompt;
-        outputItemKind = outputKind;
-        outputAmount = outputCount;
+        rewards = rewardTable ?? Array.Empty<ToolReward>();
         taskProgressId = progressId;
         requiredHits = Mathf.Max(1, hitsRequired);
-        consumeTargetOnComplete = consumeOnComplete;
+        consumeOrDisableAfterComplete = consumeOnComplete;
+        dropRewardsToWorld = dropToWorld;
+        addRewardsDirectlyToInventory = addToInventory;
+        triggerEventOnComplete = false;
+        eventIdOnComplete = string.Empty;
+    }
+
+    public void ConfigureEventTrigger(
+        ToolKind toolKind,
+        string displayName,
+        string prompt,
+        string progressId,
+        string eventId,
+        string completedPrompt = null,
+        int hitsRequired = 1,
+        bool consumeOnComplete = false)
+    {
+        requiredToolKind = toolKind;
+        displayNameChinese = displayName;
+        interactionPromptChinese = prompt;
+        completedPromptChinese = string.IsNullOrEmpty(completedPrompt) ? $"{displayName} 已修复。" : completedPrompt;
+        rewards = Array.Empty<ToolReward>();
+        taskProgressId = progressId;
+        requiredHits = Mathf.Max(1, hitsRequired);
+        consumeOrDisableAfterComplete = consumeOnComplete;
+        dropRewardsToWorld = false;
+        addRewardsDirectlyToInventory = false;
+        triggerEventOnComplete = true;
+        eventIdOnComplete = eventId;
     }
 
     void Awake()
     {
         EnsureAnimationPlayer();
         EnsureCollider();
+        if (rewardDropPoint == null)
+        {
+            rewardDropPoint = transform;
+        }
     }
 
     public bool CanUseTool(ToolKind toolKind, out string message)
@@ -64,7 +126,7 @@ public class ToolInteractable : MonoBehaviour
         message = string.Empty;
         if (completed)
         {
-            message = "已完成。";
+            message = completedPromptChinese;
             return false;
         }
 
@@ -85,32 +147,42 @@ public class ToolInteractable : MonoBehaviour
             return false;
         }
 
-        if (outputItemKind != ItemKind.None && outputAmount > 0 && inventory != null)
+        Debug.Log($"[ToolInteractable] ToolInteractable hit: {displayNameChinese} with {toolKind} | matched: true");
+
+        if (addRewardsDirectlyToInventory && HasRewards() && inventory != null
+            && !CanAcceptAllRewards(inventory))
         {
-            if (!UnifiedInventoryAcquisition.CanAcquire(inventory, outputItemKind, outputAmount))
-            {
-                resultMessage = "背包已满，无法获得产出。";
-                return false;
-            }
+            resultMessage = "背包已满，无法获得产出。";
+            return false;
         }
 
         currentHits++;
         animationPlayer?.PlayHitFeedback(hitFeedbackAnimationClip);
 
-        if (outputItemKind != ItemKind.None && outputAmount > 0 && inventory != null)
+        int granted = 0;
+        if (HasRewards())
         {
-            if (!UnifiedInventoryAcquisition.TryAcquireFully(inventory, outputItemKind, outputAmount))
-            {
-                resultMessage = "背包已满，无法获得产出。";
-                currentHits--;
-                return false;
-            }
-
-            resultMessage = $"获得 {ItemKindUtility.GetDisplayName(outputItemKind)} ×{outputAmount}";
+            granted = ToolInteractableRewardUtility.GrantRewards(
+                rewards,
+                dropRewardsToWorld,
+                addRewardsDirectlyToInventory,
+                rewardDropPoint != null ? rewardDropPoint : transform,
+                rewardDropRadius,
+                inventory,
+                transform.parent);
         }
-        else
+        else if (triggerEventOnComplete && currentHits >= requiredHits)
         {
-            resultMessage = $"{displayNameChinese} 已修复。";
+            resultMessage = completedPromptChinese;
+        }
+
+        if (granted > 0)
+        {
+            resultMessage = BuildRewardSummary();
+        }
+        else if (string.IsNullOrEmpty(resultMessage))
+        {
+            resultMessage = completedPromptChinese;
         }
 
         if (currentHits < requiredHits)
@@ -120,6 +192,52 @@ public class ToolInteractable : MonoBehaviour
 
         CompleteInteraction();
         return true;
+    }
+
+    bool HasRewards()
+    {
+        return rewards != null && rewards.Length > 0;
+    }
+
+    bool CanAcceptAllRewards(PlayerInventory inventory)
+    {
+        for (int i = 0; i < rewards.Length; i++)
+        {
+            ToolReward reward = rewards[i];
+            if (!ItemKindUtility.IsValid(reward.ItemKind))
+            {
+                continue;
+            }
+
+            int amount = Mathf.Max(reward.MinAmount, reward.MaxAmount);
+            if (!UnifiedInventoryAcquisition.CanAcquire(inventory, reward.ItemKind, amount))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    string BuildRewardSummary()
+    {
+        if (!HasRewards())
+        {
+            return completedPromptChinese;
+        }
+
+        var parts = new System.Collections.Generic.List<string>(rewards.Length);
+        for (int i = 0; i < rewards.Length; i++)
+        {
+            if (!ItemKindUtility.IsValid(rewards[i].ItemKind))
+            {
+                continue;
+            }
+
+            parts.Add($"{ItemKindUtility.GetDisplayName(rewards[i].ItemKind)}");
+        }
+
+        return parts.Count > 0 ? $"获得 {string.Join("、", parts)}" : completedPromptChinese;
     }
 
     void CompleteInteraction()
@@ -137,9 +255,15 @@ public class ToolInteractable : MonoBehaviour
             SceneTaskProgressBridge.RegisterTaskComplete(taskProgressId);
         }
 
+        if (triggerEventOnComplete && !string.IsNullOrEmpty(eventIdOnComplete))
+        {
+            GameEventManager.TriggerEvent(eventIdOnComplete);
+            Debug.Log($"[ToolInteractable] Signal Relay completed event: {eventIdOnComplete}");
+        }
+
         OnCompleted?.Invoke(this);
 
-        if (consumeTargetOnComplete)
+        if (consumeOrDisableAfterComplete)
         {
             gameObject.SetActive(false);
         }

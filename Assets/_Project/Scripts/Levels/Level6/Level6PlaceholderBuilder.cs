@@ -29,12 +29,16 @@ public static class Level6PlaceholderBuilder
         CreateTreeStump(interactables, new Vector3(10f, FloorTop + 0.35f, 0f));
         CreateSignalRelay(interactables, new Vector3(0f, FloorTop + 0.55f, 10f));
 
+        var pickups = CreateChild(root.transform, "Pickups");
+        SpawnTutorialMaterials(pickups);
+
         var stations = CreateChild(root.transform, "Stations");
         CraftingStation.Create(stations, "CraftingTableStation", new Vector3(-4f, FloorTop, -2f), WorkstationKind.Workbench);
         CraftingStation.Create(stations, "FurnaceStation", new Vector3(4f, FloorTop, -2f), WorkstationKind.Furnace);
 
-        CreateWorldLabel(markers, "WelcomeLabel", new Vector3(0f, FloorTop + 2.2f, -6f), "第六关：手持工具教学 · 石镐采矿、石斧伐木、修理工具修复中继器");
-        CreateWorldLabel(markers, "HintLabel", new Vector3(0f, FloorTop + 1.6f, -8f), "1~9 或滚轮切换工具 · 准星对准目标 · 左键或 F 使用 · 完成后前往传送门按 Y 进入第七关");
+        CreateWorldLabel(markers, "WelcomeLabel", new Vector3(0f, FloorTop + 2.2f, -6f), "第六关：工具制造教学 · 收集材料并制造石斧、石镐、修理工具");
+        CreateWorldLabel(markers, "HintLabel", new Vector3(0f, FloorTop + 1.6f, -8f), "F 拾取材料 · E 打开制造 · 1~9 切换工具 · 左键或 F 使用 · 完成后按 Y 进入第七关");
+        CreateWorldLabel(markers, "MaterialLabel", new Vector3(0f, FloorTop + 1.4f, -3.5f), "材料区");
         CreateWorldLabel(markers, "MiningLabel", new Vector3(-10f, FloorTop + 1.8f, -1.5f), "采矿区");
         CreateWorldLabel(markers, "LoggingLabel", new Vector3(10f, FloorTop + 1.8f, -1.5f), "伐木区");
         CreateWorldLabel(markers, "RepairLabel", new Vector3(0f, FloorTop + 1.8f, 8f), "修复区");
@@ -46,13 +50,20 @@ public static class Level6PlaceholderBuilder
     {
         var root = CreateInteractableRoot(parent, "MiningRock", position, new Color(0.52f, 0.54f, 0.58f), new Vector3(1.4f, 1.1f, 1.4f));
         var interactable = root.AddComponent<ToolInteractable>();
-        interactable.Configure(
+        interactable.ConfigureResource(
             ToolKind.Pickaxe,
             "矿点",
             "使用石镐采矿",
-            ItemKind.Stone,
-            2,
-            Level6TaskProgressTracker.MineOnceTaskId);
+            new[]
+            {
+                new ToolReward(ItemKind.Stone, 2, 4),
+                new ToolReward(ItemKind.OreFragment, 1, 2, 0.75f),
+            },
+            Level6TaskProgressTracker.MineOnceTaskId,
+            hitsRequired: 1,
+            consumeOnComplete: false,
+            dropToWorld: true,
+            addToInventory: false);
         ItemWorldLabel.Create(root.transform, "矿点", Vector3.up * 1.1f, 0.1f);
     }
 
@@ -60,13 +71,20 @@ public static class Level6PlaceholderBuilder
     {
         var root = CreateInteractableRoot(parent, "TreeStump", position, new Color(0.48f, 0.32f, 0.18f), new Vector3(1.1f, 0.7f, 1.1f));
         var interactable = root.AddComponent<ToolInteractable>();
-        interactable.Configure(
+        interactable.ConfigureResource(
             ToolKind.Axe,
             "木桩",
             "使用石斧伐木",
-            ItemKind.Wood,
-            2,
-            Level6TaskProgressTracker.ChopOnceTaskId);
+            new[]
+            {
+                new ToolReward(ItemKind.Wood, 2, 4),
+                new ToolReward(ItemKind.Fiber, 1, 1, 0.5f),
+            },
+            Level6TaskProgressTracker.ChopOnceTaskId,
+            hitsRequired: 1,
+            consumeOnComplete: false,
+            dropToWorld: true,
+            addToInventory: false);
         ItemWorldLabel.Create(root.transform, "木桩", Vector3.up * 0.85f, 0.1f);
     }
 
@@ -74,16 +92,63 @@ public static class Level6PlaceholderBuilder
     {
         var root = CreateInteractableRoot(parent, "SignalRelay", position, new Color(0.38f, 0.62f, 0.92f), new Vector3(1f, 1.2f, 1f));
         var interactable = root.AddComponent<ToolInteractable>();
-        interactable.Configure(
+        interactable.ConfigureEventTrigger(
             ToolKind.RepairTool,
             "信号中继器",
             "使用修理工具修复",
-            ItemKind.None,
-            0,
             Level6TaskProgressTracker.RepairSignalRelayTaskId,
+            "signal_relay_repaired",
+            "信号中继器已修复。",
             hitsRequired: 1,
             consumeOnComplete: false);
         ItemWorldLabel.Create(root.transform, "信号中继器", Vector3.up * 1.05f, 0.1f);
+    }
+
+    static void SpawnTutorialMaterials(Transform parent)
+    {
+        float pickupY = FloorTop + 0.62f;
+
+        // Near spawn — enough for Stick, Rope, and all three tools.
+        PlacePickupCluster(parent, new Vector3(-2f, pickupY, -3.5f), ItemKind.Wood, 6);
+        PlacePickupCluster(parent, new Vector3(0f, pickupY, -4f), ItemKind.Stone, 8);
+        PlacePickupCluster(parent, new Vector3(2f, pickupY, -3.5f), ItemKind.Grass, 6);
+        PlacePickupCluster(parent, new Vector3(-3.5f, pickupY, -2.5f), ItemKind.Fiber, 6);
+        PlacePickupCluster(parent, new Vector3(3.5f, pickupY, -2.5f), ItemKind.Flint, 2);
+        PlacePickupCluster(parent, new Vector3(0f, pickupY, -2f), ItemKind.OreFragment, 2);
+
+        // Near mining area.
+        PlacePickupCluster(parent, new Vector3(-12f, pickupY, 1.5f), ItemKind.Stone, 4);
+        PlacePickupCluster(parent, new Vector3(-11f, pickupY, -1.5f), ItemKind.OreFragment, 2);
+
+        // Near logging area.
+        PlacePickupCluster(parent, new Vector3(12f, pickupY, 1.5f), ItemKind.Wood, 4);
+        PlacePickupCluster(parent, new Vector3(11f, pickupY, -1.5f), ItemKind.Grass, 2);
+
+        // Near repair area.
+        PlacePickupCluster(parent, new Vector3(2f, pickupY, 9f), ItemKind.OreFragment, 2);
+        PlacePickupCluster(parent, new Vector3(-2f, pickupY, 9f), ItemKind.Stone, 2);
+        PlacePickupCluster(parent, new Vector3(0f, pickupY, 8.5f), ItemKind.Fiber, 2);
+    }
+
+    static void PlacePickupCluster(Transform parent, Vector3 center, ItemKind kind, int totalAmount)
+    {
+        if (totalAmount <= 0 || !ItemKindUtility.IsValid(kind))
+        {
+            return;
+        }
+
+        int piles = Mathf.Clamp(Mathf.CeilToInt(totalAmount / 3f), 1, 3);
+        int remaining = totalAmount;
+
+        for (int i = 0; i < piles; i++)
+        {
+            int pileAmount = i == piles - 1 ? remaining : Mathf.Max(1, totalAmount / piles);
+            remaining -= pileAmount;
+
+            float angle = i * Mathf.PI * 2f / piles;
+            Vector3 offset = new Vector3(Mathf.Cos(angle) * 0.55f, 0f, Mathf.Sin(angle) * 0.55f);
+            ItemModuleFactory.SpawnWorldPickup(kind, center + offset, pileAmount, parent);
+        }
     }
 
     static GameObject CreateInteractableRoot(Transform parent, string name, Vector3 position, Color color, Vector3 scale)
@@ -129,6 +194,11 @@ public static class Level6PlaceholderBuilder
             var material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
             material.color = color;
             renderer.sharedMaterial = material;
+        }
+
+        if (parent != null && parent.name == "Terrain")
+        {
+            cube.AddComponent<StaticPlacementGround>();
         }
 
         return cube;

@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 public class PlayerPlacementController : MonoBehaviour
 {
     [SerializeField] float maxPlacementDistance = 8f;
+    [SerializeField] bool enablePlacementDebugLogs = true;
 
     PlayerInventory inventory;
     PlayerGameplayTargeting targeting;
@@ -16,6 +17,8 @@ public class PlayerPlacementController : MonoBehaviour
     ItemKind activeItem = ItemKind.None;
     Vector3 activePreviewScale = Vector3.one;
     string lastPlacementMessage;
+    bool loggedMissingAbility;
+    bool loggedPreviewActive;
 
     public bool IsPlacementActive => placementActive;
     public ItemKind ActiveItem => activeItem;
@@ -25,18 +28,39 @@ public class PlayerPlacementController : MonoBehaviour
     {
         inventory = GetComponent<PlayerInventory>();
         targeting = GetComponent<PlayerGameplayTargeting>();
-        viewCamera = Camera.main;
+        ResolveViewCamera();
+        GameplayPlacementBootstrap.EnsureInitialized();
     }
 
     void Update()
     {
         lastPlacementMessage = string.Empty;
+        ResolveViewCamera();
 
         if (inventory == null || viewCamera == null)
         {
+            if (enablePlacementDebugLogs && viewCamera == null)
+            {
+                LogPlacementOnce("Placement blocked: gameplay camera not resolved.");
+            }
+
             HidePreview();
             return;
         }
+
+        if (!GameplayPlacementBootstrap.CanUsePlacement())
+        {
+            if (!loggedMissingAbility)
+            {
+                loggedMissingAbility = true;
+                LogPlacement("Placement blocked: BuildingPlacement ability not unlocked.");
+            }
+
+            HidePreview();
+            return;
+        }
+
+        loggedMissingAbility = false;
 
         if (ShouldBlockPlacement())
         {
@@ -55,8 +79,13 @@ public class PlayerPlacementController : MonoBehaviour
         placementActive = true;
         EnsurePreview(activeItem);
 
-        Ray ray = targeting != null ? targeting.GetCenterScreenRay() : viewCamera.ScreenPointToRay(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f));
+        if (!loggedPreviewActive)
+        {
+            loggedPreviewActive = true;
+            LogPlacement($"Selected toolbar item: {ItemKindUtility.GetDisplayName(activeItem)} | Placement preview active.");
+        }
 
+        Ray ray = GetPlacementRay();
         bool hasPoint = PlacedObjectBuilder.TryGetPlacementPosition(
             ray,
             activeItem,
@@ -92,6 +121,17 @@ public class PlayerPlacementController : MonoBehaviour
         }
     }
 
+    Ray GetPlacementRay()
+    {
+        if (targeting != null)
+        {
+            return targeting.GetCenterScreenRay();
+        }
+
+        Vector2 screenPoint;
+        return CrosshairRayUtility.GetCrosshairRay(out screenPoint);
+    }
+
     bool ShouldBlockPlacement()
     {
         if (GameplayCursorPolicy.IsAnyMenuOpen)
@@ -121,9 +161,7 @@ public class PlayerPlacementController : MonoBehaviour
 
     void TryPlaceActiveItem(Vector3 position)
     {
-        Ray ray = targeting != null
-            ? targeting.GetCenterScreenRay()
-            : viewCamera.ScreenPointToRay(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f));
+        Ray ray = GetPlacementRay();
 
         PlacedObjectBuilder.TryGetPlacementPosition(
             ray,
@@ -137,6 +175,7 @@ public class PlayerPlacementController : MonoBehaviour
         if (!PlacedObjectBuilder.IsPlacementValid(activeItem, position, supportCollider))
         {
             lastPlacementMessage = "放置位置无效。";
+            LogPlacement("Placement failed: invalid surface or overlap blocked.");
             return;
         }
 
@@ -144,12 +183,14 @@ public class PlayerPlacementController : MonoBehaviour
         if (selected.IsEmpty || selected.Kind != activeItem)
         {
             lastPlacementMessage = "请先在热键栏选中可放置物品。";
+            LogPlacement("Placement failed: no selected placeable item.");
             return;
         }
 
         if (!inventory.TryConsumeFromSelectedHotbar(1))
         {
             lastPlacementMessage = "热键栏中没有足够的物品。";
+            LogPlacement("Placement failed: insufficient hotbar count.");
             return;
         }
 
@@ -158,10 +199,17 @@ public class PlayerPlacementController : MonoBehaviour
         {
             UnifiedInventoryAcquisition.TryAcquireFully(inventory, activeItem, 1);
             lastPlacementMessage = "放置失败。";
+            LogPlacement("Placement failed: missing PlacedPrefab and fallback failed.");
             return;
         }
 
         lastPlacementMessage = $"已放置 {ItemKindUtility.GetDisplayName(activeItem)}。";
+        LogPlacement($"{ItemKindUtility.GetDisplayName(activeItem)} placed successfully.");
+    }
+
+    void ResolveViewCamera()
+    {
+        viewCamera = CrosshairRayUtility.ResolveGameplayCamera();
     }
 
     void EnsurePreview(ItemKind itemKind)
@@ -220,9 +268,33 @@ public class PlayerPlacementController : MonoBehaviour
     {
         placementActive = false;
         activeItem = ItemKind.None;
+        loggedPreviewActive = false;
         if (previewRoot != null)
         {
             previewRoot.SetActive(false);
         }
+    }
+
+    void LogPlacement(string message)
+    {
+        if (!enablePlacementDebugLogs)
+        {
+            return;
+        }
+
+        GameplayCore.Instance?.Log($"[Placement] {message}");
+    }
+
+    string lastOnceMessage;
+
+    void LogPlacementOnce(string message)
+    {
+        if (!enablePlacementDebugLogs || lastOnceMessage == message)
+        {
+            return;
+        }
+
+        lastOnceMessage = message;
+        LogPlacement(message);
     }
 }

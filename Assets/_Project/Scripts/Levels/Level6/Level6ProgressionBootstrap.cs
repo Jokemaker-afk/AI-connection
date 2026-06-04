@@ -48,6 +48,7 @@ public static class Level6ProgressionBootstrap
 
         portalTransition.Bind(manager, beacon != null ? beacon.transform : null, 4f);
         EnsureObjectiveHud(manager);
+        EnsureGameEventListener(systemsGo);
         EnsureStarterTools();
         UpdateWorldHints();
     }
@@ -89,8 +90,26 @@ public static class Level6ProgressionBootstrap
         objectiveHud.BindTo(manager);
     }
 
+    static void EnsureGameEventListener(GameObject systemsGo)
+    {
+        if (systemsGo == null)
+        {
+            return;
+        }
+
+        if (systemsGo.GetComponent<Level6GameEventListener>() == null)
+        {
+            systemsGo.AddComponent<Level6GameEventListener>();
+        }
+    }
+
     static void EnsureStarterTools()
     {
+        if (!Level6TutorialSettings.GiveDebugToolsOnSceneStart)
+        {
+            return;
+        }
+
         if (GameplayCore.Exists && GameplayCore.Instance.ProgressionState.HasPersistentState)
         {
             return;
@@ -131,8 +150,9 @@ public static class Level6ProgressionBootstrap
 
     static void UpdateWorldHints()
     {
-        RefreshLabel("WelcomeLabel", "第六关：手持工具教学 · 石镐采矿、石斧伐木、修理工具修复中继器");
-        RefreshLabel("HintLabel", "1~9 或滚轮切换工具 · 准星对准目标 · 左键或 F 使用 · 完成后前往传送门按 Y 进入第七关");
+        RefreshLabel("WelcomeLabel", "第六关：工具制造教学 · 收集材料并制造石斧、石镐、修理工具");
+        RefreshLabel("HintLabel", "F 拾取材料 · E 打开制造 · 1~9 切换工具 · 左键或 F 使用 · 完成后按 Y 进入第七关");
+        RefreshLabel("MaterialLabel", "材料区");
     }
 
     static void RefreshLabel(string objectName, string text)

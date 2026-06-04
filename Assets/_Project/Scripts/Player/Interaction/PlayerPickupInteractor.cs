@@ -9,10 +9,10 @@ public class PlayerPickupInteractor : MonoBehaviour
     string lastPickupMessage;
 
     public WorldPickupItem CurrentTarget => targeting != null ? targeting.WorldPickup : null;
-    public PlacedPickupable CurrentPlacedTarget => targeting != null ? targeting.PlacedPickup : null;
+    public PlacedPickupable CurrentPlacedTarget => targeting != null ? targeting.GetPlacedTargetForF() : null;
     public bool HasTarget => HasWorldTarget || HasPlacedTarget;
     public bool HasWorldTarget => targeting != null && targeting.HasWorldPickup;
-    public bool HasPlacedTarget => targeting != null && targeting.HasRecoverablePlacedTarget;
+    public bool HasPlacedTarget => CurrentPlacedTarget != null;
     public string LastPickupMessage => lastPickupMessage;
 
     void Awake()
@@ -101,13 +101,19 @@ public class PlayerPickupInteractor : MonoBehaviour
         {
             if (craftingInteractor.TryOpenCrafting())
             {
-                GameplayCore.Instance?.Log($"Opened crafting UI from station: {PlayerGameplayTargeting.GetStationDisplayName(targeting.CraftingStation)}");
+                GameplayCore.Instance?.Log(
+                    $"Opened crafting UI from station: {PlayerGameplayTargeting.GetStationDisplayName(targeting.GetCraftingStationForE())}");
             }
 
             return;
         }
 
-        if (targeting != null && (targeting.HasWorldPickup || targeting.HasRecoverablePlacedTarget))
+        if (targeting != null && targeting.HasWorldPickup)
+        {
+            return;
+        }
+
+        if (targeting != null && targeting.PlacedPickup != null)
         {
             return;
         }
@@ -120,22 +126,18 @@ public class PlayerPickupInteractor : MonoBehaviour
 
     public bool CanPickupCurrentTarget()
     {
-        if (HasPlacedTarget)
-        {
-            return CurrentPlacedTarget != null && CurrentPlacedTarget.CanRecover(inventory);
-        }
-
-        if (!HasWorldTarget || inventory == null)
+        if (inventory == null || targeting == null)
         {
             return false;
         }
 
-        if (!targeting.CanPickupWorldTarget)
+        if (targeting.HasWorldPickup && targeting.CanPickupWorldTarget && CurrentTarget != null)
         {
-            return false;
+            return UnifiedInventoryAcquisition.CanAcquire(inventory, CurrentTarget.ItemKind, CurrentTarget.Amount);
         }
 
-        return UnifiedInventoryAcquisition.CanAcquire(inventory, CurrentTarget.ItemKind, CurrentTarget.Amount);
+        PlacedPickupable placedTarget = targeting.GetPlacedTargetForF();
+        return placedTarget != null && placedTarget.CanRecover(inventory);
     }
 
     public bool TryPickupCurrentTarget()
@@ -147,19 +149,26 @@ public class PlayerPickupInteractor : MonoBehaviour
             return false;
         }
 
-        if (HasPlacedTarget && CurrentPlacedTarget.TryRecover(inventory, out string placedMessage))
+        if (targeting.HasWorldPickup && targeting.CanPickupWorldTarget && CurrentTarget != null)
         {
-            lastPickupMessage = placedMessage;
-            return true;
-        }
+            if (CurrentTarget.TryCollect(inventory))
+            {
+                return true;
+            }
 
-        if (!HasWorldTarget || !targeting.CanPickupWorldTarget)
-        {
             return false;
         }
 
-        if (CurrentTarget.TryCollect(inventory))
+        PlacedPickupable placedTarget = targeting.GetPlacedTargetForF();
+        if (placedTarget != null && placedTarget.TryRecover(inventory, out string placedMessage))
         {
+            lastPickupMessage = placedMessage;
+            if (GameplayTargetingPriority.IsWorkstationPlaced(placedTarget))
+            {
+                GameplayCore.Instance?.Log(
+                    $"[TargetPriority] Recovering workstation: {placedTarget.DisplayNameChinese}");
+            }
+
             return true;
         }
 

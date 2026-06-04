@@ -42,9 +42,15 @@ public class AbilityUnlockManager : MonoBehaviour
         Unlock(GameplaySceneCatalog.GetInheritedAbilities(sceneName));
     }
 
+    public void EnsureBaselineAbilitiesForScene(string sceneName, int savedMaxLevelIndex = 0)
+    {
+        int sceneLevel = GameplaySceneCatalog.GetLevelNumber(sceneName);
+        int effectiveLevel = Mathf.Max(sceneLevel, savedMaxLevelIndex);
+        Unlock(GameplaySceneCatalog.GetInheritedAbilitiesForLevel(effectiveLevel));
+    }
+
     public void ImportAbilities(GameplayAbility abilityFlags)
     {
-        unlocked.Clear();
         Unlock(abilityFlags);
     }
 

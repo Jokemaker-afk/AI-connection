@@ -18,6 +18,9 @@ public class PlayerInventoryHud : MonoBehaviour
     [SerializeField] PlayerGameplayTargeting gameplayTargeting;
     [SerializeField] CraftingHud craftingHud;
 
+    CraftingRecipeHandbookHud recipeHandbook;
+    RectTransform backpackGridRect;
+
     [Header("Trash Slot")]
     [SerializeField] float trashSlotSize = 56f;
 
@@ -69,6 +72,12 @@ public class PlayerInventoryHud : MonoBehaviour
 
     public bool IsBackpackOpen => backpackOpen;
     public bool HasCursorHeld => hasCursorHeld;
+    public bool IsHandbookOpen => recipeHandbook != null && recipeHandbook.IsOpen;
+
+    public void NotifyHandbookLayoutChanged()
+    {
+        ApplyBackpackWindowLayout();
+    }
 
     void Awake()
     {
@@ -167,6 +176,12 @@ public class PlayerInventoryHud : MonoBehaviour
         itemTooltipRegionValid = false;
         hotbarSlotViews = null;
         backpackSlotViews = null;
+        backpackGridRect = null;
+        if (recipeHandbook != null)
+        {
+            recipeHandbook.InvalidateUi();
+        }
+
         BuildUi();
         RefreshAll();
 
@@ -182,6 +197,11 @@ public class PlayerInventoryHud : MonoBehaviour
         inventory = playerInventory;
         pickupInteractor = interactor;
         SubscribeInventory();
+        if (recipeHandbook != null)
+        {
+            recipeHandbook.BindInventory(inventory);
+        }
+
         RefreshAll();
     }
 
@@ -215,6 +235,11 @@ public class PlayerInventoryHud : MonoBehaviour
         if (craftingHud == null)
         {
             craftingHud = FindFirstObjectByType<CraftingHud>();
+        }
+
+        if (recipeHandbook == null)
+        {
+            recipeHandbook = GetComponent<CraftingRecipeHandbookHud>();
         }
 
         if (itemDropController == null)
@@ -260,13 +285,14 @@ public class PlayerInventoryHud : MonoBehaviour
         }
 
         bool craftingOpen = craftingHud != null && craftingHud.IsOpen;
+        bool handbookOpen = IsHandbookOpen;
 
         if (Keyboard.current.bKey.wasPressedThisFrame)
         {
             SetBackpackOpen(!backpackOpen);
         }
 
-        if (!craftingOpen)
+        if (!craftingOpen && !handbookOpen)
         {
             for (int i = 0; i < PlayerInventory.HotbarSize; i++)
             {
@@ -278,7 +304,7 @@ public class PlayerInventoryHud : MonoBehaviour
             }
         }
 
-        if (Mouse.current != null && !backpackOpen && !craftingOpen)
+        if (Mouse.current != null && !backpackOpen && !craftingOpen && !handbookOpen)
         {
             float scroll = Mouse.current.scroll.y.ReadValue();
             if (scroll > 0f)
@@ -324,6 +350,11 @@ public class PlayerInventoryHud : MonoBehaviour
         if (open)
         {
             BringInventoryUiToFront();
+        }
+
+        if (!open && recipeHandbook != null)
+        {
+            recipeHandbook.SetOpen(false);
         }
 
         if (!open)
@@ -467,6 +498,14 @@ public class PlayerInventoryHud : MonoBehaviour
             CacheBackpackViews();
             if (HasValidBackpackViews())
             {
+                var window = backpackRoot.Find("Window");
+                if (window != null)
+                {
+                    backpackGridRect = window.Find("Grid") as RectTransform;
+                    EnsureRecipeHandbook(window);
+                }
+
+                ApplyBackpackWindowLayout();
                 return;
             }
 
@@ -531,7 +570,7 @@ public class PlayerInventoryHud : MonoBehaviour
 
         var hint = hintGo.GetComponent<Text>();
         hint.font = GetFont();
-        hint.text = "左键拖拽移动 · 拖出界面丢弃 · 拖入垃圾桶删除 · 右键拆分 · 按 B 关闭";
+        hint.text = "左键拖拽 · 拖出丢弃 · 垃圾桶删除 · 右键拆分 · B 关闭 · 左侧「制作图鉴」查看全部配方";
         hint.fontSize = 14;
         hint.alignment = TextAnchor.MiddleCenter;
         hint.color = new Color(0.82f, 0.86f, 0.92f, 0.9f);
@@ -545,6 +584,7 @@ public class PlayerInventoryHud : MonoBehaviour
         gridRect.pivot = new Vector2(0.5f, 0.5f);
         gridRect.sizeDelta = new Vector2(gridWidth, gridHeight);
         gridRect.anchoredPosition = new Vector2(0f, 8f);
+        backpackGridRect = gridRect;
 
         backpackSlotViews = new InventorySlotView[BackpackColumns * BackpackRows];
         for (int row = 0; row < BackpackRows; row++)
@@ -567,6 +607,53 @@ public class PlayerInventoryHud : MonoBehaviour
         }
 
         BuildTrashSlot(windowGo.transform, gridWidth, gridHeight);
+        EnsureRecipeHandbook(windowGo.transform);
+        ApplyBackpackWindowLayout();
+    }
+
+    void EnsureRecipeHandbook(Transform windowParent)
+    {
+        if (windowParent == null)
+        {
+            return;
+        }
+
+        recipeHandbook = GetComponent<CraftingRecipeHandbookHud>();
+        if (recipeHandbook == null)
+        {
+            recipeHandbook = gameObject.AddComponent<CraftingRecipeHandbookHud>();
+        }
+
+        recipeHandbook.EnsureBuilt(windowParent, this);
+        if (inventory != null)
+        {
+            recipeHandbook.BindInventory(inventory);
+        }
+    }
+
+    void ApplyBackpackWindowLayout()
+    {
+        if (backpackWindowRect == null)
+        {
+            return;
+        }
+
+        float gridWidth = BackpackColumns * SlotSize + (BackpackColumns - 1) * SlotSpacing;
+        float gridHeight = BackpackRows * SlotSize + (BackpackRows - 1) * SlotSpacing;
+        float handbookExtra = recipeHandbook != null && recipeHandbook.IsOpen ? recipeHandbook.HandbookWidth + 20f : 0f;
+        float contentShift = handbookExtra * 0.5f;
+
+        backpackWindowRect.sizeDelta = new Vector2(gridWidth + trashSlotSize + 72f + handbookExtra, gridHeight + 96f);
+
+        if (backpackGridRect != null)
+        {
+            backpackGridRect.anchoredPosition = new Vector2(contentShift, 8f);
+        }
+
+        if (trashSlotRect != null)
+        {
+            trashSlotRect.anchoredPosition = new Vector2(gridWidth * 0.5f + 20f + contentShift, 8f);
+        }
     }
 
     void BuildTrashSlot(Transform windowParent, float gridWidth, float gridHeight)
@@ -983,18 +1070,38 @@ public class PlayerInventoryHud : MonoBehaviour
             gameplayTargeting = FindFirstObjectByType<PlayerGameplayTargeting>();
         }
 
-        if (gameplayTargeting != null && gameplayTargeting.HasRecoverablePlacedTarget)
+        if (gameplayTargeting != null && gameplayTargeting.HasWorldPickup)
         {
-            string itemName = ItemKindUtility.GetDisplayName(gameplayTargeting.PlacedPickup.ItemKind);
             bool canTake = inventory != null
-                && gameplayTargeting.PlacedPickup.CanRecover(inventory);
+                && inventory.CanAcceptItem(gameplayTargeting.WorldPickup.ItemKind, gameplayTargeting.WorldPickup.Amount);
+            string prompt = gameplayTargeting.GetWorldPickupPrompt(canTake);
+            if (gameplayTargeting.HasInteractableCraftingStation)
+            {
+                string stationName = PlayerGameplayTargeting.GetStationDisplayName(
+                    gameplayTargeting.GetCraftingStationForE());
+                prompt = $"{prompt}\n按 E 使用：{stationName}";
+            }
+
+            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
+            pickupPromptRoot.gameObject.SetActive(!string.IsNullOrEmpty(prompt));
+            return;
+        }
+
+        PlacedPickupable placedForF = gameplayTargeting != null
+            ? gameplayTargeting.GetPlacedTargetForRecoveryPrompt()
+            : null;
+        if (placedForF != null)
+        {
+            string itemName = ItemKindUtility.GetDisplayName(placedForF.ItemKind);
+            bool canTake = placedForF.CanRecover(inventory);
             string recoverLine = canTake
                 ? $"按 F 回收：{itemName}"
                 : $"按 F 回收：{itemName}（背包已满）";
 
             if (gameplayTargeting.HasInteractableCraftingStation)
             {
-                string stationName = PlayerGameplayTargeting.GetStationDisplayName(gameplayTargeting.CraftingStation);
+                string stationName = PlayerGameplayTargeting.GetStationDisplayName(
+                    gameplayTargeting.GetCraftingStationForE());
                 GameplayChineseText.PrepareUiText(pickupPromptText, $"按 E 使用：{stationName}\n{recoverLine}");
             }
             else
@@ -1002,6 +1109,15 @@ public class PlayerInventoryHud : MonoBehaviour
                 GameplayChineseText.PrepareUiText(pickupPromptText, recoverLine);
             }
 
+            pickupPromptRoot.gameObject.SetActive(true);
+            return;
+        }
+
+        if (gameplayTargeting != null && gameplayTargeting.HasInteractableCraftingStation)
+        {
+            string stationName = PlayerGameplayTargeting.GetStationDisplayName(
+                gameplayTargeting.GetCraftingStationForE());
+            GameplayChineseText.PrepareUiText(pickupPromptText, $"按 E 使用：{stationName}");
             pickupPromptRoot.gameObject.SetActive(true);
             return;
         }
@@ -1025,50 +1141,6 @@ public class PlayerInventoryHud : MonoBehaviour
                 pickupPromptRoot.gameObject.SetActive(true);
                 return;
             }
-        }
-
-        if (gameplayTargeting != null && gameplayTargeting.HasWorldPickup)
-        {
-            bool canTake = inventory != null
-                && inventory.CanAcceptItem(gameplayTargeting.WorldPickup.ItemKind, gameplayTargeting.WorldPickup.Amount);
-            string prompt = gameplayTargeting.GetWorldPickupPrompt(canTake);
-            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
-            pickupPromptRoot.gameObject.SetActive(!string.IsNullOrEmpty(prompt));
-            return;
-        }
-
-        if (pickupInteractor != null && pickupInteractor.HasPlacedTarget)
-        {
-            string itemName = ItemKindUtility.GetDisplayName(pickupInteractor.CurrentPlacedTarget.ItemKind);
-            bool canTake = pickupInteractor.CurrentPlacedTarget != null
-                && pickupInteractor.CurrentPlacedTarget.CanRecover(inventory);
-            string prompt = canTake
-                ? $"按 F 回收：{itemName}"
-                : $"按 F 回收：{itemName}（背包已满）";
-            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
-            pickupPromptRoot.gameObject.SetActive(true);
-            return;
-        }
-
-        if (pickupInteractor != null && pickupInteractor.HasWorldTarget)
-        {
-            bool canTake = inventory != null
-                && pickupInteractor.CurrentTarget != null
-                && inventory.CanAcceptItem(pickupInteractor.CurrentTarget.ItemKind, pickupInteractor.CurrentTarget.Amount);
-            string prompt = gameplayTargeting != null
-                ? gameplayTargeting.GetWorldPickupPrompt(canTake)
-                : string.Empty;
-            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
-            pickupPromptRoot.gameObject.SetActive(!string.IsNullOrEmpty(prompt));
-            return;
-        }
-
-        if (gameplayTargeting != null && gameplayTargeting.HasCraftingStation)
-        {
-            string stationName = PlayerGameplayTargeting.GetStationDisplayName(gameplayTargeting.CraftingStation);
-            GameplayChineseText.PrepareUiText(pickupPromptText, $"按 E 使用：{stationName}");
-            pickupPromptRoot.gameObject.SetActive(true);
-            return;
         }
 
         var placementController = pickupInteractor != null

@@ -359,6 +359,13 @@ public class PlayerProgressionState : MonoBehaviour
         GameplayCore.Instance?.Abilities?.ImportAbilities(saveData.UnlockedAbilities);
     }
 
+    public void ApplyBaselineAbilitiesForScene(string sceneName)
+    {
+        GameplayCore.Instance?.Abilities?.EnsureBaselineAbilitiesForScene(
+            sceneName,
+            CurrentLevelIndex);
+    }
+
     public static void LogInventoryTransitionSnapshot(GameObject player, string sceneName, bool isLeavingScene)
     {
         if (player == null)
@@ -475,12 +482,56 @@ public class PlayerProgressionState : MonoBehaviour
             EnsureItem(inventory, ItemKind.WoodFloor, 4);
         }
 
-        if (level >= 6)
+        if (level >= 6 && Level6TutorialSettings.GiveDebugToolsOnSceneStart)
         {
             EnsureItem(inventory, ItemKind.StonePickaxe, 1);
             EnsureItem(inventory, ItemKind.StoneAxe, 1);
             EnsureItem(inventory, ItemKind.RepairTool, 1);
             inventory.SetSelectedHotbarIndex(0);
+        }
+
+        if (level >= 6)
+        {
+            ApplyLevel6DebugPlacementLoadout(inventory);
+        }
+    }
+
+    static void ApplyLevel6DebugPlacementLoadout(PlayerInventory inventory)
+    {
+        if (inventory == null)
+        {
+            return;
+        }
+
+        EnsureItem(inventory, ItemKind.CraftingTable, 1);
+        EnsureItem(inventory, ItemKind.Furnace, 1);
+        EnsureItem(inventory, ItemKind.Wood, 10);
+        EnsureItem(inventory, ItemKind.Stone, 10);
+        EnsureItem(inventory, ItemKind.Grass, 6);
+        EnsureItem(inventory, ItemKind.Fiber, 6);
+
+        if (inventory.CountItem(ItemKind.CraftingTable) > 0)
+        {
+            EnsureHotbarSelection(inventory, ItemKind.CraftingTable);
+        }
+
+        GameplayCore.Instance?.Log("Debug starter inventory created for Level 6 placement testing.");
+    }
+
+    static void EnsureHotbarSelection(PlayerInventory inventory, ItemKind kind)
+    {
+        if (inventory == null || !ItemKindUtility.IsValid(kind))
+        {
+            return;
+        }
+
+        for (int i = 0; i < PlayerInventory.HotbarSize; i++)
+        {
+            if (inventory.GetHotbarSlot(i).Kind == kind)
+            {
+                inventory.SetSelectedHotbarIndex(i);
+                return;
+            }
         }
     }
 
@@ -519,11 +570,12 @@ public class PlayerProgressionState : MonoBehaviour
             return;
         }
 
-        if (inventory.CountItem(kind) >= amount)
+        int current = inventory.CountItem(kind);
+        if (current >= amount)
         {
             return;
         }
 
-        UnifiedInventoryAcquisition.TryAcquire(inventory, kind, amount);
+        UnifiedInventoryAcquisition.TryAcquire(inventory, kind, amount - current);
     }
 }

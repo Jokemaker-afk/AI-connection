@@ -25,6 +25,7 @@ public struct ItemData
     public GameObject PlacedPrefab;
     public Sprite Icon;
     public HandheldToolProfile HandheldTool;
+    public WeaponKind WeaponKind;
     public GameObject FutureModelPrefab;
     public Texture FutureTextureReference;
 
