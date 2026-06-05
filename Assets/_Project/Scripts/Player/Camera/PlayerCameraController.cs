@@ -1,6 +1,9 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+/// <summary>
+/// Third-person over-the-shoulder camera. Crosshair aims along camera forward; player stays offset on screen.
+/// </summary>
 [DefaultExecutionOrder(40)]
 public class PlayerCameraController : MonoBehaviour
 {
@@ -13,20 +16,27 @@ public class PlayerCameraController : MonoBehaviour
     [SerializeField] Transform target;
     [SerializeField] Key toggleKey = Key.V;
 
-    [Header("Third Person (Fortnite-style OTS)")]
-    [SerializeField] float thirdPersonDistance = 5.2f;
-    [SerializeField] float thirdPersonHeight = 2.0f;
-    [SerializeField] bool smoothThirdPersonCameraPosition = false;
-    [SerializeField] float cameraSmoothTime = 0.04f;
-    [SerializeField] bool alwaysFollowTarget = false;
+    [Header("Composition Preset")]
+    [SerializeField] ThirdPersonCompositionPreset compositionPreset = ThirdPersonCompositionPreset.CombatOverShoulder;
+    [SerializeField] bool applyPresetOnStart = true;
+
+    [Header("Third Person Over-Shoulder")]
+    [SerializeField] float thirdPersonCameraDistance = 4f;
+    [SerializeField] float thirdPersonCameraHeight = 0.55f;
+    [SerializeField] float thirdPersonShoulderOffset = 0.6f;
+    [SerializeField] float thirdPersonLookAtHeight = 1.3f;
+    [SerializeField] float thirdPersonCameraPitch = 10f;
     [SerializeField] bool useRightShoulder = true;
-    [SerializeField] float shoulderOffsetX = 0.85f;
-    [SerializeField] float shoulderOffsetY = 0.3f;
-    [SerializeField] Vector3 thirdPersonCameraOffset = new Vector3(0f, 0.15f, 0f);
-    [SerializeField] float thirdPersonLookAtHeight = 1.55f;
-    [SerializeField] float thirdPersonPivotForwardOffset = 0.35f;
+    [SerializeField] Vector3 thirdPersonCameraOffset = Vector3.zero;
     [SerializeField] Vector2 crosshairScreenOffset = Vector2.zero;
-    [SerializeField] float thirdPersonFieldOfView = 70f;
+    [SerializeField] float thirdPersonFieldOfView = 68f;
+    [SerializeField] bool thirdPersonLookAtPivot = false;
+
+    [Header("Third Person Smoothing")]
+    [SerializeField] bool smoothThirdPersonCameraPosition = false;
+    [SerializeField] float cameraFollowSmoothTime = 0.04f;
+    [SerializeField] float cameraRotationSmoothTime = 0f;
+    [SerializeField] bool alwaysFollowTarget = false;
 
     [Header("Third Person Collision")]
     [SerializeField] float cameraCollisionRadius = 0.28f;
@@ -46,8 +56,11 @@ public class PlayerCameraController : MonoBehaviour
     [SerializeField] float thirdPersonMaxPitch = 52f;
     [SerializeField] bool lockCursorInFirstPerson = true;
 
+    [Header("Debug")]
+    [SerializeField] bool showThirdPersonCompositionDebug = true;
+
     float yaw;
-    float pitch = 8f;
+    float pitch;
     float thirdPersonDistanceCurrent;
     CameraMode mode = CameraMode.ThirdPerson;
     Camera viewCamera;
@@ -55,6 +68,7 @@ public class PlayerCameraController : MonoBehaviour
     CharacterController targetController;
     bool cursorLocked;
     Vector3 thirdPersonVelocity;
+    ThirdPersonCompositionDebug compositionDebug;
 
     public CameraMode Mode => mode;
     public bool IsFirstPerson => mode == CameraMode.FirstPerson;
@@ -63,6 +77,10 @@ public class PlayerCameraController : MonoBehaviour
     public Vector3 AimForward => transform.forward;
     public Vector2 CrosshairScreenOffset => crosshairScreenOffset;
     public Transform Target => target;
+    public float ThirdPersonDistance => thirdPersonCameraDistance;
+    public float ThirdPersonHeight => thirdPersonCameraHeight;
+    public float ShoulderOffsetX => thirdPersonShoulderOffset;
+    public float ThirdPersonLookAtHeight => thirdPersonLookAtHeight;
 
     public void SetTarget(Transform newTarget)
     {
@@ -75,27 +93,62 @@ public class PlayerCameraController : MonoBehaviour
         }
     }
 
-    /// <summary>Immediate horizontal aim forward from mouse yaw (same-frame, no camera smoothing).</summary>
+    /// <summary>Horizontal aim forward from orbit yaw — matches crosshair direction.</summary>
     public Vector3 GetImmediateAimForward()
     {
         return Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
     }
 
-    /// <summary>Immediate horizontal aim right from mouse yaw (same-frame, no camera smoothing).</summary>
     public Vector3 GetImmediateAimRight()
     {
         return Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
     }
 
     public Vector3 GetPlanarForward() => GetImmediateAimForward();
-
     public Vector3 GetPlanarRight() => GetImmediateAimRight();
 
-    public void ConfigureAlwaysFollow(bool enabled, float distance = 5.2f, float height = 2f)
+    public void ApplyCompositionPreset(ThirdPersonCompositionPreset preset, bool resetPitch = true)
+    {
+        compositionPreset = preset;
+        switch (preset)
+        {
+            case ThirdPersonCompositionPreset.Exploration:
+                thirdPersonCameraDistance = 5.2f;
+                thirdPersonCameraHeight = 0.7f;
+                thirdPersonShoulderOffset = 0.35f;
+                thirdPersonLookAtHeight = 1.25f;
+                thirdPersonCameraPitch = 8f;
+                break;
+            case ThirdPersonCompositionPreset.BuildingPlacement:
+                thirdPersonCameraDistance = 4.6f;
+                thirdPersonCameraHeight = 0.85f;
+                thirdPersonShoulderOffset = 0.4f;
+                thirdPersonLookAtHeight = 1.35f;
+                thirdPersonCameraPitch = 14f;
+                break;
+            case ThirdPersonCompositionPreset.CombatOverShoulder:
+            default:
+                thirdPersonCameraDistance = 4f;
+                thirdPersonCameraHeight = 0.55f;
+                thirdPersonShoulderOffset = 0.6f;
+                thirdPersonLookAtHeight = 1.3f;
+                thirdPersonCameraPitch = 10f;
+                break;
+        }
+
+        thirdPersonLookAtPivot = false;
+        thirdPersonDistanceCurrent = thirdPersonCameraDistance;
+        if (resetPitch)
+        {
+            pitch = thirdPersonCameraPitch;
+        }
+    }
+
+    public void ConfigureAlwaysFollow(bool enabled, float distance = 4f, float height = 0.55f)
     {
         alwaysFollowTarget = enabled;
-        thirdPersonDistance = distance;
-        thirdPersonHeight = height;
+        thirdPersonCameraDistance = distance;
+        thirdPersonCameraHeight = height;
         thirdPersonDistanceCurrent = distance;
         mode = CameraMode.ThirdPerson;
         ApplyPlayerVisibility();
@@ -110,7 +163,7 @@ public class PlayerCameraController : MonoBehaviour
     {
         if (camera == null)
         {
-            return new Ray(transform.position, AimForward);
+            return new Ray(transform.position, GetImmediateAimForward());
         }
 
         return camera.ScreenPointToRay(GetCrosshairScreenPoint());
@@ -118,7 +171,8 @@ public class PlayerCameraController : MonoBehaviour
 
     void Awake()
     {
-        thirdPersonDistanceCurrent = thirdPersonDistance;
+        thirdPersonDistanceCurrent = thirdPersonCameraDistance;
+        pitch = thirdPersonCameraPitch;
         viewCamera = GetComponent<Camera>();
         if (viewCamera == null)
         {
@@ -126,18 +180,42 @@ public class PlayerCameraController : MonoBehaviour
         }
 
         EnsureTarget();
+        EnsureCompositionDebug();
     }
 
     void Start()
     {
         EnsureTarget();
         CachePlayerRenderers();
+        if (applyPresetOnStart)
+        {
+            ApplyCompositionPreset(compositionPreset, true);
+        }
+
         if (target != null)
         {
             yaw = target.eulerAngles.y;
         }
 
         ApplyFieldOfView();
+        SyncCompositionDebug();
+    }
+
+    void EnsureCompositionDebug()
+    {
+        compositionDebug = GetComponent<ThirdPersonCompositionDebug>();
+        if (compositionDebug == null && showThirdPersonCompositionDebug)
+        {
+            compositionDebug = gameObject.AddComponent<ThirdPersonCompositionDebug>();
+        }
+    }
+
+    void SyncCompositionDebug()
+    {
+        if (compositionDebug != null)
+        {
+            compositionDebug.ShowThirdPersonCompositionDebug = showThirdPersonCompositionDebug;
+        }
     }
 
     void EnsureTarget()
@@ -206,7 +284,7 @@ public class PlayerCameraController : MonoBehaviour
     void ToggleMode()
     {
         mode = mode == CameraMode.ThirdPerson ? CameraMode.FirstPerson : CameraMode.ThirdPerson;
-        thirdPersonDistanceCurrent = thirdPersonDistance;
+        thirdPersonDistanceCurrent = thirdPersonCameraDistance;
         ApplyPlayerVisibility();
         UpdateCursorLock(true);
     }
@@ -247,22 +325,20 @@ public class PlayerCameraController : MonoBehaviour
     void ApplyThirdPersonCamera()
     {
         Quaternion orbitRotation = Quaternion.Euler(pitch, yaw, 0f);
-        Vector3 pivot = target.position
-            + Vector3.up * thirdPersonLookAtHeight
-            + orbitRotation * Vector3.forward * thirdPersonPivotForwardOffset;
+        Vector3 orbitOrigin = target.position + Vector3.up * thirdPersonLookAtHeight;
 
-        float shoulderX = useRightShoulder ? shoulderOffsetX : -shoulderOffsetX;
-        Vector3 localCameraOffset = new Vector3(
+        float shoulderX = useRightShoulder ? thirdPersonShoulderOffset : -thirdPersonShoulderOffset;
+        Vector3 shoulderSpaceOffset = new Vector3(
             shoulderX + thirdPersonCameraOffset.x,
-            thirdPersonHeight + shoulderOffsetY + thirdPersonCameraOffset.y,
-            -thirdPersonDistance + thirdPersonCameraOffset.z);
+            thirdPersonCameraHeight + thirdPersonCameraOffset.y,
+            -thirdPersonCameraDistance + thirdPersonCameraOffset.z);
 
-        Vector3 desiredPosition = pivot + orbitRotation * localCameraOffset;
-        desiredPosition = ResolveCameraCollision(pivot, desiredPosition);
+        Vector3 desiredPosition = orbitOrigin + orbitRotation * shoulderSpaceOffset;
+        desiredPosition = ResolveCameraCollision(orbitOrigin, desiredPosition);
 
         bool usePositionSmoothing = smoothThirdPersonCameraPosition
             && !alwaysFollowTarget
-            && cameraSmoothTime > 0.001f;
+            && cameraFollowSmoothTime > 0.001f;
 
         if (usePositionSmoothing)
         {
@@ -270,7 +346,7 @@ public class PlayerCameraController : MonoBehaviour
                 transform.position,
                 desiredPosition,
                 ref thirdPersonVelocity,
-                cameraSmoothTime);
+                cameraFollowSmoothTime);
         }
         else
         {
@@ -278,7 +354,24 @@ public class PlayerCameraController : MonoBehaviour
             thirdPersonVelocity = Vector3.zero;
         }
 
-        transform.rotation = orbitRotation;
+        Quaternion targetRotation = orbitRotation;
+        if (thirdPersonLookAtPivot)
+        {
+            Vector3 toOrigin = orbitOrigin - transform.position;
+            if (toOrigin.sqrMagnitude > 0.001f)
+            {
+                targetRotation = Quaternion.LookRotation(toOrigin.normalized, Vector3.up);
+            }
+        }
+
+        if (cameraRotationSmoothTime > 0.001f)
+        {
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime / cameraRotationSmoothTime);
+        }
+        else
+        {
+            transform.rotation = targetRotation;
+        }
     }
 
     Vector3 ResolveCameraCollision(Vector3 pivot, Vector3 desiredPosition)
@@ -419,4 +512,11 @@ public class PlayerCameraController : MonoBehaviour
             }
         }
     }
+
+#if UNITY_EDITOR
+    void OnValidate()
+    {
+        SyncCompositionDebug();
+    }
+#endif
 }

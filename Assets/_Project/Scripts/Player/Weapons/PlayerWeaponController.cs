@@ -195,18 +195,11 @@ public class PlayerWeaponController : MonoBehaviour
 
         if (result.DamagedCount <= 0)
         {
-            if (combatTargeting != null
-                && combatTargeting.IsInAttackRange(profile, result.Primary) == false)
-            {
-                LogAttack("Attack blocked: target out of range");
-                SetMessage("距离太远");
-            }
-            else
-            {
-                LogAttack("Attack missed: no direct crosshair target");
-                SetMessage("未命中目标");
-            }
-
+            string missReason = ResolveMissReason(profile, result.Primary);
+            LogAttack(missReason);
+            SetMessage(missReason.Contains("out of range") || missReason.Contains("距离")
+                ? "距离太远"
+                : "未命中目标");
             attackInProgress = false;
             return;
         }
@@ -225,7 +218,58 @@ public class PlayerWeaponController : MonoBehaviour
     WeaponTargetingResult ResolveLegacyAttack(WeaponProfile profile)
     {
         Ray crosshairRay = CrosshairRayUtility.GetCrosshairRay(out _);
-        return WeaponTargetingSystem.ResolveStrictCrosshairTarget(profile, crosshairRay, transform.position);
+        PlayerMeleeAttackOrigin meleeOrigin = PlayerMeleeAttackOrigin.EnsureOnPlayer(gameObject);
+        Vector3 aimForward = meleeOrigin != null
+            ? meleeOrigin.AimForward
+            : (targeting != null ? targeting.GetAimForward() : transform.forward);
+        Vector3 attackOrigin = meleeOrigin != null
+            ? meleeOrigin.WorldPosition
+            : transform.position + Vector3.up * 1.2f;
+        return WeaponTargetingSystem.ResolveStrictCrosshairTarget(profile, crosshairRay, attackOrigin, aimForward);
+    }
+
+    string ResolveMissReason(WeaponProfile profile, WeaponTargetCandidate primary)
+    {
+        if (combatTargeting == null || primary.Enemy == null)
+        {
+            return "Attack missed: no direct crosshair target";
+        }
+
+        if (profile.IsMelee)
+        {
+            MeleeHitValidationResult validation = combatTargeting.LastMeleeValidation;
+            if (!validation.HasTarget)
+            {
+                validation = MeleeHitValidator.Validate(
+                    profile,
+                    combatTargeting.MeleeAttackOrigin != null
+                        ? combatTargeting.MeleeAttackOrigin.WorldPosition
+                        : transform.position + Vector3.up * 1.2f,
+                    combatTargeting.MeleeAttackOrigin != null
+                        ? combatTargeting.MeleeAttackOrigin.AimForward
+                        : targeting != null ? targeting.GetAimForward() : transform.forward,
+                    primary,
+                    combatTargeting.MeleeAttackOrigin != null
+                        ? combatTargeting.MeleeAttackOrigin.VerticalTolerance
+                        : MeleeHitValidator.DefaultVerticalTolerance);
+            }
+
+            if (validation.MissReason == "out of range")
+            {
+                return "Attack blocked: target out of range";
+            }
+
+            if (validation.MissReason == "out of angle")
+            {
+                return "Attack missed: out of angle";
+            }
+        }
+        else if (!combatTargeting.IsInAttackRange(profile, primary))
+        {
+            return "Attack blocked: target out of range";
+        }
+
+        return "Attack missed: no direct crosshair target";
     }
 
     void ApplyDamageToCandidate(WeaponTargetCandidate candidate, WeaponProfile profile, Vector3 aimForward)

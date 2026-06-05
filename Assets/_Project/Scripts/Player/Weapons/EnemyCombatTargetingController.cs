@@ -2,12 +2,15 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Strict center-crosshair weapon enemy targeting. No aim assist, stickiness, or soft lock.
+/// Strict crosshair enemy selection + player-space melee range validation.
+/// Target selection: direct center-crosshair ray only.
+/// Melee hit: validates crosshair target against MeleeAttackOrigin volume.
 /// </summary>
 [DisallowMultipleComponent]
+[DefaultExecutionOrder(100)]
 public class EnemyCombatTargetingController : MonoBehaviour
 {
-    [Header("Strict Crosshair")]
+    [Header("Strict Crosshair Selection")]
     [SerializeField] WeaponTargetingMode targetingMode = WeaponTargetingMode.StrictCrosshair;
     [SerializeField] float maxEnemyTargetDistance = 20f;
 
@@ -16,7 +19,9 @@ public class EnemyCombatTargetingController : MonoBehaviour
 
     readonly Dictionary<EnemyController, EnemySurfaceHighlighter> highlighterCache = new Dictionary<EnemyController, EnemySurfaceHighlighter>();
 
+    PlayerMeleeAttackOrigin meleeAttackOrigin;
     WeaponTargetCandidate currentTarget;
+    MeleeHitValidationResult lastMeleeValidation;
     Ray lastCrosshairRay;
     Vector2 lastCrosshairScreenPoint;
     EnemyController lastHighlightedEnemy;
@@ -25,6 +30,8 @@ public class EnemyCombatTargetingController : MonoBehaviour
     public WeaponTargetingMode TargetingMode => targetingMode;
     public bool HasTarget => currentTarget.Enemy != null && currentTarget.Damageable != null && !currentTarget.Damageable.IsDead;
     public WeaponTargetCandidate CurrentTarget => currentTarget;
+    public MeleeHitValidationResult LastMeleeValidation => lastMeleeValidation;
+    public PlayerMeleeAttackOrigin MeleeAttackOrigin => meleeAttackOrigin;
 
     public string PrimaryTargetPrompt
     {
@@ -47,13 +54,22 @@ public class EnemyCombatTargetingController : MonoBehaviour
             }
 
             if (ItemCatalog.TryGet(GetEquippedWeaponKind(), out ItemData data) && data.IsWeapon
-                && !IsInAttackRange(data.Weapon, currentTarget))
+                && data.Weapon.IsMelee)
             {
-                return $"目标：{name}{healthLine}\n距离太远";
+                MeleeHitValidationResult preview = ValidateMeleeHit(data.Weapon, currentTarget);
+                if (!preview.InRange)
+                {
+                    return $"目标：{name}{healthLine}\n距离太远";
+                }
             }
 
             return $"目标：{name}{healthLine}\n左键攻击";
         }
+    }
+
+    void Awake()
+    {
+        meleeAttackOrigin = PlayerMeleeAttackOrigin.EnsureOnPlayer(gameObject);
     }
 
     void LateUpdate()
@@ -66,6 +82,7 @@ public class EnemyCombatTargetingController : MonoBehaviour
 
         UpdateStrictCrosshairTarget();
         ApplyHighlight();
+        RefreshMeleeValidationPreview();
     }
 
     public WeaponTargetingResult BuildAttackResult(WeaponProfile profile)
@@ -79,38 +96,88 @@ public class EnemyCombatTargetingController : MonoBehaviour
         if (!HasTarget)
         {
             LogDebug("Weapon attack target: none");
+            LogDebug("Melee miss reason: no target");
             return result;
         }
 
+        LogDebug($"Crosshair target: {currentTarget.DisplayName}");
         LogDebug($"Weapon attack target: {currentTarget.DisplayName}");
 
-        if (!IsInAttackRange(profile, currentTarget))
+        if (profile.IsRanged || profile.AttackMode == WeaponAttackMode.Hitscan)
         {
-            LogDebug("Attack blocked: target out of range");
+            if (IsRangedHitValid(profile, currentTarget))
+            {
+                result.DamagedTargets = new[] { currentTarget };
+            }
+            else
+            {
+                LogDebug("Attack blocked: target out of range");
+            }
+
             return result;
         }
 
+        lastMeleeValidation = ValidateMeleeHit(profile, currentTarget);
+        meleeAttackOrigin?.LogValidation(lastMeleeValidation, currentTarget.DisplayName);
+
+        if (!lastMeleeValidation.IsValid)
+        {
+            LogDebug($"Melee miss reason: {lastMeleeValidation.MissReason}");
+            return result;
+        }
+
+        LogDebug("Melee hit valid: true");
         result.DamagedTargets = new[] { currentTarget };
         return result;
     }
 
     public bool IsInAttackRange(WeaponProfile profile, WeaponTargetCandidate candidate)
     {
+        if (profile.IsRanged || profile.AttackMode == WeaponAttackMode.Hitscan)
+        {
+            return IsRangedHitValid(profile, candidate);
+        }
+
+        return ValidateMeleeHit(profile, candidate).IsValid;
+    }
+
+    bool IsMeleeHitValid(WeaponProfile profile, WeaponTargetCandidate candidate)
+    {
+        return ValidateMeleeHit(profile, candidate).IsValid;
+    }
+
+    MeleeHitValidationResult ValidateMeleeHit(WeaponProfile profile, WeaponTargetCandidate candidate)
+    {
+        EnsureMeleeOrigin();
+        return MeleeHitValidator.Validate(
+            profile,
+            meleeAttackOrigin.WorldPosition,
+            meleeAttackOrigin.AimForward,
+            candidate,
+            meleeAttackOrigin.VerticalTolerance);
+    }
+
+    bool IsRangedHitValid(WeaponProfile profile, WeaponTargetCandidate candidate)
+    {
         if (candidate.Collider == null)
         {
             return false;
         }
 
-        Vector3 attackOrigin = transform.position + Vector3.up * 1.1f;
-        Vector3 toTarget = candidate.HitPoint - attackOrigin;
-        if (profile.IsRanged || profile.AttackMode == WeaponAttackMode.Hitscan)
+        EnsureMeleeOrigin();
+        Vector3 toTarget = candidate.HitPoint - meleeAttackOrigin.WorldPosition;
+        return toTarget.magnitude <= profile.AttackRange + 0.5f;
+    }
+
+    void RefreshMeleeValidationPreview()
+    {
+        if (!HasTarget || !ItemCatalog.TryGet(GetEquippedWeaponKind(), out ItemData data) || !data.IsWeapon || !data.Weapon.IsMelee)
         {
-            return toTarget.magnitude <= profile.AttackRange + 0.5f;
+            lastMeleeValidation = default;
+            return;
         }
 
-        Vector3 flat = toTarget;
-        flat.y = 0f;
-        return flat.magnitude <= profile.AttackRange + candidate.Collider.bounds.extents.magnitude;
+        lastMeleeValidation = ValidateMeleeHit(data.Weapon, currentTarget);
     }
 
     void UpdateStrictCrosshairTarget()
@@ -124,8 +191,7 @@ public class EnemyCombatTargetingController : MonoBehaviour
         }
 
         lastCrosshairRay = CrosshairRayUtility.GetCrosshairRay(out lastCrosshairScreenPoint);
-        Camera camera = CrosshairRayUtility.ResolveGameplayCamera();
-        if (camera == null)
+        if (CrosshairRayUtility.ResolveGameplayCamera() == null)
         {
             ClearTargetAndHighlight("no camera");
             return;
@@ -190,8 +256,7 @@ public class EnemyCombatTargetingController : MonoBehaviour
     {
         if (HasTarget && currentTarget.Enemy != null)
         {
-            EnemySurfaceHighlighter highlighter = GetHighlighter(currentTarget.Enemy);
-            highlighter.SetHighlight(EnemyHighlightLevel.Primary);
+            GetHighlighter(currentTarget.Enemy).SetHighlight(EnemyHighlightLevel.Primary);
             lastHighlightedEnemy = currentTarget.Enemy;
             return;
         }
@@ -206,16 +271,9 @@ public class EnemyCombatTargetingController : MonoBehaviour
             lastHighlightedEnemy = null;
         }
 
-        var keys = new List<EnemyController>(highlighterCache.Keys);
-        for (int i = 0; i < keys.Count; i++)
+        foreach (KeyValuePair<EnemyController, EnemySurfaceHighlighter> pair in highlighterCache)
         {
-            EnemyController enemy = keys[i];
-            if (enemy == null)
-            {
-                continue;
-            }
-
-            highlighterCache[enemy].ClearHighlight();
+            pair.Value?.ClearHighlight();
         }
     }
 
@@ -227,11 +285,20 @@ public class EnemyCombatTargetingController : MonoBehaviour
         }
 
         currentTarget = default;
+        lastMeleeValidation = default;
         lastHighlightedEnemy = null;
 
         foreach (KeyValuePair<EnemyController, EnemySurfaceHighlighter> pair in highlighterCache)
         {
             pair.Value?.ClearHighlight();
+        }
+    }
+
+    void EnsureMeleeOrigin()
+    {
+        if (meleeAttackOrigin == null)
+        {
+            meleeAttackOrigin = PlayerMeleeAttackOrigin.EnsureOnPlayer(gameObject);
         }
     }
 
@@ -318,6 +385,13 @@ public class EnemyCombatTargetingController : MonoBehaviour
         {
             Gizmos.color = Color.red;
             Gizmos.DrawSphere(currentTarget.HitPoint, 0.12f);
+
+            EnsureMeleeOrigin();
+            if (meleeAttackOrigin != null)
+            {
+                Gizmos.color = lastMeleeValidation.IsValid ? Color.green : Color.magenta;
+                Gizmos.DrawLine(meleeAttackOrigin.WorldPosition, currentTarget.HitPoint);
+            }
         }
     }
 }

@@ -34,6 +34,8 @@ public static class PlayerRootComponents
         EnsureComponent<PlayerWeaponController>(playerRoot);
         EnsureComponent<EnemyCombatTargetingController>(playerRoot);
         EnsureComponent<WeaponTargetHighlightController>(playerRoot);
+        PlayerMeleeAttackOrigin.EnsureOnPlayer(playerRoot);
+        EnsureComponent<ThirdPersonMeleeAlignmentDebug>(playerRoot);
         EnsureComponent<PlayerItemDropController>(playerRoot);
         EnsureComponent<PlayerController>(playerRoot);
         EnsureComponent<PlayerVisualSwitcher>(playerRoot);

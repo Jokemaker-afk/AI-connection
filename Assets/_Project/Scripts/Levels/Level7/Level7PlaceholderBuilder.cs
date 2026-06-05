@@ -29,6 +29,9 @@ public static class Level7PlaceholderBuilder
 
         float spawnY = FloorTop + 0.85f;
         EnemyModuleFactory.SpawnEnemy(EnemyKind.TrainingDummy, new Vector3(-9f, spawnY, 4f), Quaternion.identity, enemies);
+        EnemyModuleFactory.SpawnEnemy(EnemyKind.TrainingDummy, new Vector3(0f, spawnY, 2.6f), Quaternion.identity, enemies);
+        EnemyModuleFactory.SpawnEnemy(EnemyKind.TrainingDummy, new Vector3(-1.4f, spawnY, 2.8f), Quaternion.identity, enemies);
+        EnemyModuleFactory.SpawnEnemy(EnemyKind.TrainingDummy, new Vector3(1.4f, spawnY, 2.8f), Quaternion.identity, enemies);
         EnemyModuleFactory.SpawnEnemy(EnemyKind.TrainingRangedTarget, new Vector3(9f, spawnY, 12f), Quaternion.identity, enemies);
         EnemyModuleFactory.SpawnEnemy(EnemyKind.BasicWalker, new Vector3(0f, spawnY, 8f), Quaternion.identity, enemies);
 

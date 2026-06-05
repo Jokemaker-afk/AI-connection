@@ -50,6 +50,9 @@ public static class GameplayLayers
         }
     }
 
+    /// <summary>Layers excluded from world aim / targeting raycasts (player body, UI, ignore raycast).</summary>
+    public static LayerMask AimRayExcludeMask => TargetingIgnoreMask;
+
     /// <summary>Raycasts for weapons and combat (Enemy layer, or Default fallback).</summary>
     public static LayerMask CombatTargetMask
     {
@@ -63,6 +66,9 @@ public static class GameplayLayers
             return 1 << 0;
         }
     }
+
+    /// <summary>Weapon enemy targeting — Enemy layer only, never includes Player.</summary>
+    public static LayerMask WeaponEnemyTargetMask => CombatTargetMask;
 
     public static LayerMask PickupItemMask
     {
@@ -182,6 +188,22 @@ public static class GameplayLayers
         }
 
         SetLayerRecursively(target, Enemy);
+    }
+
+    public static void TrySetIgnoreRaycastLayer(GameObject target)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        int ignoreRaycast = LayerMask.NameToLayer("Ignore Raycast");
+        if (ignoreRaycast < 0)
+        {
+            return;
+        }
+
+        SetLayerRecursively(target, ignoreRaycast);
     }
 
     static void SetLayerRecursively(GameObject obj, int layer)

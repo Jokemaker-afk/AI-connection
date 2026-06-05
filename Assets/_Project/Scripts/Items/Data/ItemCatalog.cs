@@ -237,7 +237,7 @@ public static class ItemCatalog
         RegisterWeapon(
             ItemKind.BasicSword,
             "基础剑",
-            CreateMeleeWeaponProfile(WeaponKind.Melee, damage: 20f, range: 2.25f, cooldown: 0.5f, knockback: 4f),
+            CreateMeleeWeaponProfile(WeaponKind.Melee, damage: 20f, range: 2.5f, cooldown: 0.5f, knockback: 4f),
             new Color(0.78f, 0.8f, 0.88f),
             descriptionChinese: "基础近战武器。");
 
@@ -283,7 +283,7 @@ public static class ItemCatalog
             AttackCooldown = cooldown,
             KnockbackForce = knockback,
             AttackRadius = 0.45f,
-            AttackAngle = 55f,
+            AttackAngle = 42f,
             MaxTargets = 1,
             MeleeRadius = 0.45f,
             IsMelee = true,

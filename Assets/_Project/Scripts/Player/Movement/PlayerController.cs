@@ -30,8 +30,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] MovementMode movementMode = MovementMode.AimFacingStrafe;
 
     [Header("Visual Facing (independent from movement)")]
-    [SerializeField] float visualAimTurnSpeed = 16f;
+    [SerializeField] float visualAimTurnSpeed = 24f;
     [SerializeField] bool useInstantVisualAimRotation = false;
+    [SerializeField] bool useInstantVisualAimInThirdPerson = true;
     [SerializeField] bool rotateMovementRootInFirstPerson = true;
     [SerializeField] bool pauseVisualFacingWhenMenuOpen = true;
 
@@ -405,7 +406,7 @@ public class PlayerController : MonoBehaviour
         }
 
         Quaternion targetRotation = Quaternion.LookRotation(desiredForward.normalized);
-        if (useInstantVisualAimRotation)
+        if (useInstantVisualAimRotation || IsThirdPersonInstantAim())
         {
             visualRoot.rotation = targetRotation;
             return;
@@ -413,6 +414,13 @@ public class PlayerController : MonoBehaviour
 
         float blend = Mathf.Clamp01(visualAimTurnSpeed * Time.deltaTime);
         visualRoot.rotation = Quaternion.Slerp(visualRoot.rotation, targetRotation, blend);
+    }
+
+    bool IsThirdPersonInstantAim()
+    {
+        return useInstantVisualAimInThirdPerson
+            && cameraController != null
+            && !cameraController.IsFirstPerson;
     }
 
     void ApplyFirstPersonRootRotation()

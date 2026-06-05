@@ -7,7 +7,8 @@ public static class WeaponTargetingSystem
     public static WeaponTargetingResult ResolveStrictCrosshairTarget(
         WeaponProfile profile,
         Ray crosshairRay,
-        Vector3 attackOriginFeet)
+        Vector3 meleeAttackOrigin,
+        Vector3 aimForward)
     {
         var result = new WeaponTargetingResult();
         LayerMask mask = GameplayLayers.CombatTargetMask;
@@ -37,21 +38,17 @@ public static class WeaponTargetingSystem
         result.Primary = candidate;
         result.CandidatesInArea = new[] { candidate };
 
-        Vector3 attackOrigin = attackOriginFeet + Vector3.up * 1.1f;
-        Vector3 toTarget = hit.point - attackOrigin;
-        bool inRange;
+        bool canDamage;
         if (profile.IsRanged || profile.AttackMode == WeaponAttackMode.Hitscan)
         {
-            inRange = toTarget.magnitude <= profile.AttackRange + 0.5f;
+            canDamage = Vector3.Distance(meleeAttackOrigin, hit.point) <= profile.AttackRange + 0.5f;
         }
         else
         {
-            Vector3 flat = toTarget;
-            flat.y = 0f;
-            inRange = flat.magnitude <= profile.AttackRange + primaryCollider.bounds.extents.magnitude;
+            canDamage = MeleeHitValidator.Validate(profile, meleeAttackOrigin, aimForward, candidate).IsValid;
         }
 
-        if (inRange)
+        if (canDamage)
         {
             result.DamagedTargets = new[] { candidate };
         }

@@ -111,6 +111,7 @@ public static class ItemModuleFactory
 
         ApplyHandheldTransform(instance.transform, data.HandheldTool, isFirstPerson);
         EnsureHandheldComponents(instance, kind, data.HandheldTool);
+        GameplayLayers.TrySetIgnoreRaycastLayer(instance);
         return instance;
     }
 
@@ -142,6 +143,7 @@ public static class ItemModuleFactory
         }
 
         weaponVisual.Configure(kind, data.Weapon);
+        GameplayLayers.TrySetIgnoreRaycastLayer(instance);
         return instance;
     }
 
