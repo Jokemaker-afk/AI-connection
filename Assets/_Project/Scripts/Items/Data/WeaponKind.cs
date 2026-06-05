@@ -1,11 +1,12 @@
 /// <summary>
-/// Future weapon classification (firearms, melee weapons, etc.).
-/// Basic tools use <see cref="ToolKind"/>; weapons will use this when the gun/combat system is added.
+/// Weapon classification (separate from <see cref="ToolKind"/>).
+/// Blueprint v0.2 Level7: Melee + one ranged prototype (Bow / Firearm / TrainingBlaster).
 /// </summary>
 public enum WeaponKind
 {
     None = 0,
     Melee,
-    Firearm,
     Bow,
+    Firearm,
+    TrainingBlaster,
 }

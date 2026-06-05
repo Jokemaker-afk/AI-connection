@@ -31,6 +31,9 @@ public static class PlayerRootComponents
         EnsureComponent<PlayerToolSockets>(playerRoot);
         EnsureComponent<PlayerHeldItemController>(playerRoot);
         EnsureComponent<PlayerToolController>(playerRoot);
+        EnsureComponent<PlayerWeaponController>(playerRoot);
+        EnsureComponent<EnemyCombatTargetingController>(playerRoot);
+        EnsureComponent<WeaponTargetHighlightController>(playerRoot);
         EnsureComponent<PlayerItemDropController>(playerRoot);
         EnsureComponent<PlayerController>(playerRoot);
         EnsureComponent<PlayerVisualSwitcher>(playerRoot);

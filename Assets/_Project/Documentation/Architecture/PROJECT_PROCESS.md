@@ -2,7 +2,7 @@
 
 > 本文档是当前项目的**最新玩法与实现基线**。可直接提供给 AI，用于产出：游戏大纲、功能拆解、技术方案、任务排期。
 >
-> **最近同步**：2026-06-02 · 分支 `work` · 已含 Level1→Level6 链路、准星拾取、制造/放置、Level5 进度信标。
+> **最近同步**：2026-06-02 · Blueprint v0.2 · Level6 工具教学已实现 · Level7 武器教学占位场景已对齐 · Level8 探索关待建
 
 ---
 
@@ -11,8 +11,8 @@
 - **项目名**：AI connection
 - **引擎版本**：Unity 6 (`6000.4.7f1`)
 - **渲染管线**：URP
-- **当前类型**：第三/第一人称切换的关卡闯关 + 生存制造教学原型
-- **核心体验**：移动与平台挑战 + Buff 教学 + 准星拾取/背包 + 随身/工作台制造 + 热键栏放置建造 + 关卡进度信标
+- **当前类型**：第三/第一人称切换的关卡闯关 + 生存制造 + 手持工具教学原型（武器战斗待实现）
+- **核心体验**：移动与平台挑战 + Buff 教学 + 准星拾取/背包 + 制造/放置 + 工具交互 + 关卡进度信标（Level7 武器攻击待接）
 
 ---
 
@@ -25,9 +25,12 @@
 3. `Level3`（Buff 教学 Hub）
 4. `Level4`（拾取 + 背包 + 收集进度 → 传送门）
 5. `Level5`（制造与放置教学 → 信标）
-6. `Level6`（占位场景，尚无玩法目标）
+6. `Level6`（手持工具教学 → 采矿 / 伐木 / 修复 → 传送门进 Level7）
+7. `Level7`（武器使用教学**占位场景**；训练假人/靶与基础剑拾取；无进度与战斗逻辑）
 
-以上场景均已写入 `EditorBuildSettings`。
+**规划但未进 Build Settings：** `Level8`（原 Blueprint 探索关，半随机模块化）
+
+以上 **Level1~Level7** 均已写入 `EditorBuildSettings`（场景路径：`Assets/_Project/Scenes/Levels/LevelN/LevelN.unity`）。
 
 ### 2.2 通关逻辑
 
@@ -41,7 +44,13 @@
   3. 热键栏选中工作台 → 准星对准地面 → **左键** 放置
   4. 靠近已放置工作台按 `E` → 在工作台配方中制作 **熔炉**（需 `Stonework`，放置工作台后自动解锁）
   5. 放置熔炉 → **信标激活**（一次性锁定，收回物品不影响）→ 走进信标传送门进入 Level6
-- **Level6**：仅占位地板与欢迎标签，无胜利条件
+- **Level6**：
+  1. 拾取材料，在随身/工作台制造 **木棍 → 绳子 → 石镐 / 石斧 / 修理工具**
+  2. **采矿区**用石镐、**伐木区**用石斧、**修复区**用修理工具修复信号中继器
+  3. 三项任务完成后 **SceneBeacon** 激活，靠近传送门按 **Y** 进入 Level7
+- **Level7**（占位，无胜利条件）：
+  - 运行时由 `Level7PlaceholderBuilder` 生成近战区（训练假人）、远程区（训练靶）、**基础剑**拾取点
+  - **尚无** `PlayerWeaponController`、伤害判定、任务进度或进 Level8 传送门
 
 ### 2.3 Level5 运行时特殊处理
 
@@ -73,7 +82,7 @@
 | `E` | 打开制造 UI：无目标时 = 随身制造；准星对准已放置工作站 = 该站上下文制造 |
 | `B` | 打开/关闭背包 |
 | `1~9` | 切换工具栏选中槽位 |
-| 左键 | 热键栏选中**可放置物**时确认放置 |
+| 左键 | 热键栏选中**可放置物**时确认放置；Level6 对 `ToolInteractable` 使用工具；**Level7 规划为武器攻击（未实现）** |
 | `Esc` | 关闭制造面板 |
 
 **注意**：Level5 世界提示文字仍写「C 随身制作」，实际按键为 **`E`**（以代码为准，待统一文案）。
@@ -131,10 +140,25 @@
 - 条件满足后 **SceneBeacon** 在 `(0, 0.65, 12)` 激活传送门 → `Level6`
 - **SceneProgressionHud**：中文目标条（「制造并放置工作台」→「使用工作台制造并放置熔炉」→「前往信标」）
 
-## 4.6 Level6（占位）
+## 4.6 Level6（手持工具教学）
 
-- 24×24 地板 + 「第六关占位场景」标签
-- 无进度系统、无敌人、无制造教学目标
+- 36×36 教学场地：采矿区、伐木区、修复区 + 材料拾取 + 预置工作台/熔炉（便于制造工具）
+- `Level6TaskProgressTracker` + `Level6ProgressionManager` + `Level6ProgressionHud`：采矿 / 伐木 / 修复三项任务
+- `ToolInteractable` 矿点、木桩、信号中继器；`Level6PortalTransition` 任务完成后 **Y** 进 Level7
+- 可选调试：`Level6TutorialSettings.GiveDebugToolsOnSceneStart` 开局赠送三工具
+
+## 4.7 Level7（武器使用教学 · 占位）
+
+- 32×32 教学场地（紫灰地板 + 近战/远程分区）
+- **训练假人**（`TrainingMeleeDummy`）、**远程训练靶**（`TrainingRangedTarget`）— 仅视觉占位，无 `DamageableTarget`
+- 出生区旁可拾取 **基础剑**（`ItemKind.BasicSword`）；远程武器拾取点文案标注「待实现」
+- 出口区标注 **Level8 探索关待实现**；无 `Level7ProgressionManager` / 传送门
+- 重建场景：`Tools → Create Level 7 Scene (Weapon Tutorial Placeholder)`
+
+## 4.8 Level8（规划 · 未实现）
+
+- Blueprint v0.2：原 Level7 **半随机探索**（Data Core ×3、Signal Relay、模块化 `ModularLevelAssembler` 起点拟为 Level8）
+- 场景与脚本尚未创建
 
 ---
 
@@ -188,6 +212,7 @@
 - `GameplayCrosshairHud`：屏幕准星（供 `CrosshairRayUtility` 对齐）
 - `CollectibleProgressHud`：Level4 收集进度
 - `SceneProgressionHud`：Level5 放置目标
+- `Level6ProgressionHud`：Level6 工具教学任务条
 - `CraftingHud`：多列制造面板（分类筛选、Shift+滚轮横向滚动）
 
 ---
@@ -388,6 +413,7 @@ CrosshairRayUtility（准星 ScreenPointToRay，禁止鼠标拾取）
 - `Create Level 5 Scene (Crafting Tutorial Placeholder)`
 - `Setup Level 5 (Crafting Tutorial)`
 - `Create Level 6 Scene (Placeholder)`
+- `Create Level 7 Scene (Weapon Tutorial Placeholder)`
 
 推荐重建流程（当场景配置错乱时）：
 
@@ -410,8 +436,9 @@ CrosshairRayUtility（准星 ScreenPointToRay，禁止鼠标拾取）
 - `LevelManager.cs`：关卡过渡（Level1~3 Y 键）
 - `LevelGoal.cs`：到点触发过关
 - `Level3SceneAutoSetup.cs` / `Level4SceneAutoSetup.cs` / `Level5SceneAutoSetup.cs`
-- `Level3BuffHubBuilder.cs` / `Level4PlaceholderBuilder.cs` / `Level5PlaceholderBuilder.cs` / `Level6PlaceholderBuilder.cs`
+- `Level3BuffHubBuilder.cs` / `Level4PlaceholderBuilder.cs` / `Level5PlaceholderBuilder.cs` / `Level6PlaceholderBuilder.cs` / `Level7PlaceholderBuilder.cs`
 - `Level5ProgressionBootstrap.cs`：Level5 进度 + 删预置工作台
+- `Level6ProgressionBootstrap.cs` / `Level6ProgressionManager.cs` / `Level6TaskProgressTracker.cs` / `Level6PortalTransition.cs`
 - `CollectibleManager.cs` / `PortalUnlockManager.cs`
 - `SceneProgressionManager.cs` / `SceneBeacon.cs` / `RequiredPlacedObjectTracker.cs`
 - `ScenePortal.cs` / `PortalVisualBuilder.cs`
@@ -456,30 +483,35 @@ CrosshairRayUtility（准星 ScreenPointToRay，禁止鼠标拾取）
 2. **地面圆环贴地**：逻辑已改为从高处 Raycast 跳过自身碰撞体，需在第三人称 Play Mode 实测是否仍悬空
 3. **文案不一致**：世界 Hint 写「C 随身制作」，实际按键为 `E`
 4. **世界标签英文残留**：部分 Legacy 拾取物或旧标签可能仍显示 "Stone" 等；需验证 `ItemWorldLabel` / `UpgradeLegacyLabels`
-5. **Level6 空白**：仅占位，无进度/教学/敌人
-6. **中文渲染**：未迁移 TMP；依赖 `GameplayChineseText` + OS 字体预烘焙，新增汉字需补充 `CommonChineseCharacters`
-7. **场景重复挂载**：多次重建后 Level3~5 可能出现重复 Systems/HUD 对象，需菜单重建校正
-8. **图标与模型**：仍为运行时 primitive / 程序 sprite，非最终美术
-9. **Unity 6 API 废弃警告**：部分脚本仍有警告，不影响当前运行
-10. **无存档**：关卡进度、背包、科技、放置物状态均不持久化
+5. **Level7 武器系统未接**：占位场景已有假人/靶/基础剑拾取，但无 `PlayerWeaponController`、伤害与进 Level8 条件
+6. **Level8 未创建**：模块化探索与 Data Core 任务尚未落地
+7. **中文渲染**：未迁移 TMP；依赖 `GameplayChineseText` + OS 字体预烘焙，新增汉字需补充 `CommonChineseCharacters`
+8. **场景重复挂载**：多次重建后 Level3~6 可能出现重复 Systems/HUD 对象，需菜单重建校正
+9. **图标与模型**：仍为运行时 primitive / 程序 sprite，非最终美术
+10. **Unity 6 API 废弃警告**：部分脚本仍有警告，不影响当前运行
+11. **无存档**：关卡进度、背包、科技、放置物状态均不持久化
+12. **`ModularLevelAssembler`**：代码仍以 Level7 为模块化起点；Blueprint 要求迁至 Level8（与 Level8 场景一并改）
 
 ---
 
 ## 15. 建议给 AI 的任务方向（下一阶段可选扩展）
 
-### 15.1 玩法向
+### 15.1 玩法向（Blueprint v0.2 规划顺序）
 
-1. 为 Level6 设计具体目标（例如：熔炼金属锭 → 制作剑 → 击败占位敌人）
-2. 工具栏 **使用** 逻辑（石斧砍树、石镐采矿、绷带回血等），而不只是放置
-3. 已放置 **储物箱** 交互 UI（Chest inventory）
-4. 营火/熔炉 **燃料** 与持续加工队列
+1. **Level7**：实现武器系统（`PlayerWeaponController`、`DamageableTarget`、近战/远程命中、进度与进 Level8 传送门）
+2. **Level8**：创建场景 + 半随机模块化探索（Data Core、Signal Relay；`ModularLevelAssembler` 起点迁至 8）
+3. **Level8+**：基地 Hub、矿区深化、中后期词缀区域
+4. 已放置 **储物箱** 交互 UI（Chest inventory）
+5. 营火/熔炉 **燃料** 与持续加工队列
+
+> 武器与工具分离：`ToolKind` / `ToolInteractable` 负责资源与修复；`WeaponKind` / `DamageableTarget` 负责战斗（见 Blueprint §4.7）。
 
 ### 15.2 关卡向
 
 1. 将 Level4 收集阈值、Level5 放置条件配置化（ScriptableObject / 每关 JSON）
 2. Level5.unity **永久** 移除 baked 工作台并保存
-3. 添加 Level7+ 或 Hub 关，串联已注册但未使用的配方链（织布、炼金、科技台）
-4. 关卡内敌人 / 陷阱 / 限时挑战
+3. 添加 **Level8+** 或 Hub 关，串联已注册但未使用的配方链（织布、炼金、科技台）
+4. 关卡内敌人 / 陷阱 / 限时挑战（Level7 起先做训练靶，再做正式敌人）
 
 ### 15.3 体验向
 
@@ -511,7 +543,7 @@ CrosshairRayUtility（准星 ScreenPointToRay，禁止鼠标拾取）
 
 ## 16. 一句话摘要（可作为 AI Prompt 开头）
 
-这是一个 Unity 6 的第三/第一人称闯关 + 生存制造原型，已实现 Level1→Level6 场景链路、Level3 四 Buff 教学、Level4 准星拾取与 30% 收集传送门、Level5 随身/工作台制造与放置工作台+熔炉后激活信标进 Level6；核心交互一律基于屏幕准星射线（非鼠标 hover），下一步可在 Level6 落地战斗/熔炼闭环、工具使用、存档与美术替换。
+这是一个 Unity 6 的第三/第一人称闯关 + 生存制造原型，已实现 Level1→Level7 场景链路：Level4 准星拾取、Level5 制造放置、Level6 工具教学（采矿/伐木/修复后进 Level7）、Level7 为**武器教学占位布局**（假人/靶/基础剑拾取，战斗与通关未实现）。核心交互基于屏幕准星射线。**下一步**：Level7 武器战斗逻辑 → Level8 半随机探索。
 
 ---
 

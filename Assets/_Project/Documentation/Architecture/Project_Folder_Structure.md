@@ -28,11 +28,14 @@ Assets/
 | Level4 | Level4.unity | Level4 |
 | Level5 | Level5.unity | Level5 |
 | Level6 | Level6.unity | Level6 |
-| Level7 | Level7.unity | Level7 |
+| Level7 | Level7.unity | Level7 — **武器使用教学**（占位布局；战斗逻辑待实现） |
+| Level8 | *(planned)* | Level8 — **首次半随机探索**（场景尚未创建） |
 
 Runtime loads scenes **by name** (`SceneManager.LoadScene("Level5")`), not by asset path. After moving scenes, **Build Settings paths** must stay in sync (already updated in `ProjectSettings/EditorBuildSettings.asset`).
 
 **New level:** create `Assets/_Project/Scenes/Levels/LevelN/LevelN.unity`, add to Build Settings, extend `GameplaySceneCatalog`, add scripts under `Scripts/Levels/LevelN/`.
+
+**Legacy:** older copies under `Assets/Scenes/` (e.g. `Level7.unity`) are not in Build Settings — use `_Project/Scenes/Levels/` only. Rebuild Level7 via `Tools → Create Level 7 Scene (Weapon Tutorial Placeholder)` after placeholder script changes.
 
 ## Scripts (`_Project/Scripts/`)
 

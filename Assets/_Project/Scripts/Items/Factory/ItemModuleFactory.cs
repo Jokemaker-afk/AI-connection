@@ -114,6 +114,61 @@ public static class ItemModuleFactory
         return instance;
     }
 
+    public static GameObject SpawnHandheldWeapon(ItemKind kind, Transform socket, bool isFirstPerson)
+    {
+        if (socket == null || !TryGetValidatedData(kind, "SpawnHandheldWeapon", out ItemData data) || !data.IsWeapon)
+        {
+            return null;
+        }
+
+        GameObject template = HandheldWeaponPrefabBuilder.GetOrCreatePrefab(kind);
+        if (template == null)
+        {
+            return null;
+        }
+
+        GameObject instance = Object.Instantiate(template, socket);
+        instance.name = $"Equipped_{kind}";
+        instance.transform.localPosition = Vector3.zero;
+        instance.transform.localRotation = Quaternion.identity;
+        instance.transform.localScale = Vector3.one;
+        instance.SetActive(true);
+        ApplyWeaponTransform(instance.transform, data.Weapon, isFirstPerson);
+
+        HandheldWeaponVisual weaponVisual = instance.GetComponent<HandheldWeaponVisual>();
+        if (weaponVisual == null)
+        {
+            weaponVisual = instance.AddComponent<HandheldWeaponVisual>();
+        }
+
+        weaponVisual.Configure(kind, data.Weapon);
+        return instance;
+    }
+
+    static void ApplyWeaponTransform(Transform weaponTransform, WeaponProfile profile, bool isFirstPerson)
+    {
+        if (weaponTransform == null)
+        {
+            return;
+        }
+
+        if (isFirstPerson)
+        {
+            weaponTransform.localPosition = profile.FirstPersonLocalPosition;
+            weaponTransform.localRotation = Quaternion.Euler(profile.FirstPersonLocalEuler);
+            weaponTransform.localScale = profile.FirstPersonLocalScale.sqrMagnitude > 0.001f
+                ? profile.FirstPersonLocalScale
+                : Vector3.one;
+            return;
+        }
+
+        weaponTransform.localPosition = profile.ThirdPersonLocalPosition;
+        weaponTransform.localRotation = Quaternion.Euler(profile.ThirdPersonLocalEuler);
+        weaponTransform.localScale = profile.ThirdPersonLocalScale.sqrMagnitude > 0.001f
+            ? profile.ThirdPersonLocalScale
+            : Vector3.one;
+    }
+
     public static InventorySlotData CreateInventoryEntry(ItemKind kind, int amount)
     {
         if (!TryGetValidatedData(kind, "CreateInventoryEntry", out ItemData data))
@@ -213,6 +268,11 @@ public static class ItemModuleFactory
         if (data.IsHandheldTool)
         {
             return SpawnHandheldTool(kind, socket, isFirstPerson);
+        }
+
+        if (data.IsWeapon)
+        {
+            return SpawnHandheldWeapon(kind, socket, isFirstPerson);
         }
 
         if (!data.IsPlaceable)

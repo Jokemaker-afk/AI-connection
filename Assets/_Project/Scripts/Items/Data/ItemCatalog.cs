@@ -56,6 +56,7 @@ public static class ItemCatalog
         GameObject placedPrefab = null,
         Sprite icon = null,
         HandheldToolProfile handheldTool = default,
+        WeaponProfile weapon = default,
         WeaponKind weaponKind = WeaponKind.None,
         string descriptionChinese = null,
         bool recoverable = true,
@@ -87,7 +88,8 @@ public static class ItemCatalog
             PlacedPrefab = placedPrefab,
             Icon = icon,
             HandheldTool = handheldTool,
-            WeaponKind = weaponKind,
+            Weapon = weapon.WeaponKind != WeaponKind.None ? weapon : CreateWeaponFromLegacyKind(weaponKind),
+            WeaponKind = weapon.WeaponKind != WeaponKind.None ? weapon.WeaponKind : weaponKind,
             FutureModelPrefab = futureModelPrefab,
             FutureTextureReference = futureTextureReference,
         };
@@ -232,17 +234,114 @@ public static class ItemCatalog
             descriptionChinese: "扩大背包容量的工具。",
             craftable: true,
             recoverable: false);
-        Register(
+        RegisterWeapon(
             ItemKind.BasicSword,
             "基础剑",
-            ItemCategory.Weapon,
+            CreateMeleeWeaponProfile(WeaponKind.Melee, damage: 20f, range: 2.25f, cooldown: 0.5f, knockback: 4f),
             new Color(0.78f, 0.8f, 0.88f),
+            descriptionChinese: "基础近战武器。");
+
+        RegisterWeapon(
+            ItemKind.TrainingBlaster,
+            "训练发射器",
+            CreateRangedWeaponProfile(WeaponKind.TrainingBlaster, damage: 14f, range: 28f, cooldown: 0.35f, knockback: 2.5f),
+            new Color(0.55f, 0.82f, 0.95f),
+            descriptionChinese: "第七关远程训练武器，无限训练弹药。",
+            craftable: false);
+    }
+
+    static void RegisterWeapon(
+        ItemKind id,
+        string name,
+        WeaponProfile weapon,
+        Color color,
+        string descriptionChinese = null,
+        bool craftable = true)
+    {
+        Register(
+            id,
+            name,
+            ItemCategory.Weapon,
+            color,
             stackable: false,
             maxStack: 1,
-            descriptionChinese: "基础近战武器。",
-            craftable: true,
+            descriptionChinese: descriptionChinese ?? name,
+            craftable: craftable,
             recoverable: false,
-            weaponKind: WeaponKind.Melee);
+            weapon: weapon);
+    }
+
+    static WeaponProfile CreateMeleeWeaponProfile(WeaponKind kind, float damage, float range, float cooldown, float knockback)
+    {
+        return new WeaponProfile
+        {
+            WeaponKind = kind,
+            AttackMode = WeaponAttackMode.MeleeSwing,
+            TargetMode = WeaponTargetMode.SingleTarget,
+            Damage = damage,
+            AttackRange = range,
+            AttackCooldown = cooldown,
+            KnockbackForce = knockback,
+            AttackRadius = 0.45f,
+            AttackAngle = 55f,
+            MaxTargets = 1,
+            MeleeRadius = 0.45f,
+            IsMelee = true,
+            IsRanged = false,
+            UseFallbackAttackAnimation = true,
+            FallbackAttackDuration = 0.32f,
+            FallbackSwingDegrees = 58f,
+            FallbackSwingForward = 0.16f,
+            FallbackRecoilDistance = 0.08f,
+            FirstPersonLocalPosition = new Vector3(0.2f, -0.06f, 0.28f),
+            FirstPersonLocalEuler = new Vector3(-18f, -68f, 6f),
+            ThirdPersonLocalPosition = new Vector3(0.1f, -0.02f, 0.12f),
+            ThirdPersonLocalEuler = new Vector3(-12f, -72f, 4f),
+        };
+    }
+
+    static WeaponProfile CreateRangedWeaponProfile(WeaponKind kind, float damage, float range, float cooldown, float knockback)
+    {
+        return new WeaponProfile
+        {
+            WeaponKind = kind,
+            AttackMode = WeaponAttackMode.Hitscan,
+            TargetMode = WeaponTargetMode.Ray,
+            Damage = damage,
+            AttackRange = range,
+            AttackCooldown = cooldown,
+            KnockbackForce = knockback,
+            AttackRadius = 0.2f,
+            AttackAngle = 4f,
+            MaxTargets = 1,
+            MeleeRadius = 0.2f,
+            IsMelee = false,
+            IsRanged = true,
+            UseFallbackAttackAnimation = true,
+            FallbackAttackDuration = 0.22f,
+            FallbackSwingDegrees = 0f,
+            FallbackSwingForward = 0f,
+            FallbackRecoilDistance = 0.12f,
+            FirstPersonLocalPosition = new Vector3(0.22f, -0.04f, 0.3f),
+            FirstPersonLocalEuler = new Vector3(-8f, -90f, 0f),
+            ThirdPersonLocalPosition = new Vector3(0.12f, 0.02f, 0.14f),
+            ThirdPersonLocalEuler = new Vector3(-6f, -92f, 0f),
+        };
+    }
+
+    static WeaponProfile CreateWeaponFromLegacyKind(WeaponKind weaponKind)
+    {
+        if (weaponKind == WeaponKind.None)
+        {
+            return default;
+        }
+
+        if (weaponKind == WeaponKind.Melee)
+        {
+            return CreateMeleeWeaponProfile(weaponKind, 15f, 2.2f, 0.5f, 3.5f);
+        }
+
+        return CreateRangedWeaponProfile(weaponKind, 12f, 24f, 0.4f, 2f);
     }
 
     static void RegisterConsumables()

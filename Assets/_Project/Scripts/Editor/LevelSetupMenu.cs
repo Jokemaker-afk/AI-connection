@@ -12,6 +12,7 @@ public static class LevelSetupMenu
     const string Level5ScenePath = "Assets/_Project/Scenes/Levels/Level5/Level5.unity";
     const string Level6ScenePath = "Assets/_Project/Scenes/Levels/Level6/Level6.unity";
     const string Level7ScenePath = "Assets/_Project/Scenes/Levels/Level7/Level7.unity";
+    const string Level8ScenePath = "Assets/_Project/Scenes/Levels/Level8/Level8.unity";
 
     [MenuItem("Tools/Setup Gameplay Foundation In Current Scene")]
     public static void SetupGameplayFoundationInCurrentScene()
@@ -223,7 +224,7 @@ public static class LevelSetupMenu
         Debug.Log("Level 6 configured: mine, chop, repair tasks then Y near portal to enter Level7.");
     }
 
-    [MenuItem("Tools/Create Level 7 Scene (Placeholder)")]
+    [MenuItem("Tools/Create Level 7 Scene (Weapon Tutorial Placeholder)")]
     public static void CreateLevel7Scene()
     {
         var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
@@ -243,7 +244,30 @@ public static class LevelSetupMenu
         AddSceneToBuildSettings(Level7ScenePath);
         EnsureAllLevelsInBuildSettings();
 
-        Debug.Log("Level 7 placeholder scene created at Assets/_Project/Scenes/Levels/Level7/Level7.unity");
+        Debug.Log("Level 7 weapon-tutorial placeholder created at Assets/_Project/Scenes/Levels/Level7/Level7.unity (Blueprint v0.2).");
+    }
+
+    [MenuItem("Tools/Create Level 8 Scene (Exploration Placeholder)")]
+    public static void CreateLevel8Scene()
+    {
+        var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+
+        foreach (var extra in Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None))
+        {
+            if (extra.name == "Main Camera" || extra.name == "Directional Light")
+            {
+                Object.DestroyImmediate(extra);
+            }
+        }
+
+        GameplayRigBuilder.EnsureCoreGameplayObjects(new Vector3(0f, 0f, -2f));
+        Level8PlaceholderBuilder.Generate(true);
+
+        EditorSceneManager.SaveScene(scene, Level8ScenePath);
+        AddSceneToBuildSettings(Level8ScenePath);
+        EnsureAllLevelsInBuildSettings();
+
+        Debug.Log("Level 8 exploration placeholder created at Assets/_Project/Scenes/Levels/Level8/Level8.unity");
     }
 
     static void EnsureLevel4CollectibleSystems()
@@ -404,6 +428,7 @@ public static class LevelSetupMenu
         AddSceneToBuildSettings(Level5ScenePath);
         AddSceneToBuildSettings(Level6ScenePath);
         AddSceneToBuildSettings(Level7ScenePath);
+        AddSceneToBuildSettings(Level8ScenePath);
     }
 
     static void AddSceneToBuildSettings(string scenePath)

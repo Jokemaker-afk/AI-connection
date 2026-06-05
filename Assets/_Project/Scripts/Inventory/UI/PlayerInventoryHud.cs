@@ -1125,11 +1125,42 @@ public class PlayerInventoryHud : MonoBehaviour
         var toolController = pickupInteractor != null
             ? pickupInteractor.GetComponent<PlayerToolController>()
             : FindFirstObjectByType<PlayerToolController>();
+        var weaponController = pickupInteractor != null
+            ? pickupInteractor.GetComponent<PlayerWeaponController>()
+            : FindFirstObjectByType<PlayerWeaponController>();
+        if (weaponController != null && !string.IsNullOrEmpty(weaponController.LastMessage))
+        {
+            GameplayChineseText.PrepareUiText(pickupPromptText, weaponController.LastMessage);
+            pickupPromptRoot.gameObject.SetActive(true);
+            return;
+        }
+
         if (toolController != null && !string.IsNullOrEmpty(toolController.LastToolMessage))
         {
             GameplayChineseText.PrepareUiText(pickupPromptText, toolController.LastToolMessage);
             pickupPromptRoot.gameObject.SetActive(true);
             return;
+        }
+
+        var highlightController = pickupInteractor != null
+            ? pickupInteractor.GetComponent<WeaponTargetHighlightController>()
+            : FindFirstObjectByType<WeaponTargetHighlightController>();
+        if (highlightController != null && !string.IsNullOrEmpty(highlightController.PrimaryTargetPrompt))
+        {
+            GameplayChineseText.PrepareUiText(pickupPromptText, highlightController.PrimaryTargetPrompt);
+            pickupPromptRoot.gameObject.SetActive(true);
+            return;
+        }
+
+        if (weaponController != null && weaponController.HasEquippedWeapon)
+        {
+            string weaponPrompt = weaponController.GetWeaponPrompt();
+            if (!string.IsNullOrEmpty(weaponPrompt))
+            {
+                GameplayChineseText.PrepareUiText(pickupPromptText, weaponPrompt);
+                pickupPromptRoot.gameObject.SetActive(true);
+                return;
+            }
         }
 
         if (gameplayTargeting != null && gameplayTargeting.HasToolInteractable && toolController != null)

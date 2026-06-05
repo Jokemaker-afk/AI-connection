@@ -14,4 +14,5 @@ public enum GameplayAbility
     WorkstationInteraction = 1 << 9,
     HandheldTools = 1 << 10,
     SceneProgression = 1 << 11,
+    WeaponCombat = 1 << 12,
 }

@@ -1,6 +1,7 @@
 # AI Connection 游戏蓝图规划文档
 
-> 版本：v0.1  
+> 版本：v0.2  
+> **v0.2 变更**：新增 Level7 武器使用教学关；原 Level7 及之后所有关卡计划整体顺延 +1（探索从 Level8 起）。  
 > 项目基线来源：当前 `Project_Guide.md`  
 > 当前方向：轻生存建造 + 关卡探索 + 科技树成长 + 半随机地形生成  
 > 主要制作环境：Unity 6 / URP  
@@ -11,7 +12,7 @@
 ## 0. 一句话定位
 
 **AI Connection** 是一款以 Unity 制作为核心的 3D 轻生存建造探索游戏。  
-玩家从分段教学关卡开始学习移动、跑酷、Buff、拾取、背包、制造与手持工具等系统，随后进入半随机生成的 AI 区域，通过探索、收集资源、建造装置、解锁科技树、强化角色与基地，逐步深入更危险的区域，最终完成对 AI 核心的修复、连接或关闭。
+玩家从分段教学关卡开始学习移动、跑酷、Buff、拾取、背包、制造、手持工具与武器使用等系统，随后进入半随机生成的 AI 区域，通过探索、收集资源、建造装置、解锁科技树、强化角色与基地，逐步深入更危险的区域，最终完成对 AI 核心的修复、连接或关闭。
 
 ---
 
@@ -43,7 +44,7 @@
 
 ### 2.1 不推倒重来
 
-已有的 Level1 至 Level4 保留，并作为**分段教学关**——每一关只教一类核心系统，而不是在前四关内讲完所有基础内容。制造、手持工具等系统分别在 Level5、Level6 独立教学。
+已有的 Level1 至 Level4 保留，并作为**分段教学关**——每一关只教一类核心系统，而不是在前四关内讲完所有基础内容。制造、手持工具、武器使用分别在 Level5、Level6、Level7 独立教学。
 
 ### 2.2 先形成闭环，再扩展内容
 
@@ -140,12 +141,27 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 | Level4 | Phase 1 | 分段基础教学 | 拾取、背包、工具栏、堆叠、拖拽 |
 | **Level5** | **Phase 2** | **制造教学** | 工作台、配方、制作 UI、材料消耗 |
 | **Level6** | **Phase 2** | **手持工具教学** | 工具栏装备、采矿 / 伐木 / 修复交互 |
-| Level7 | Phase 3 | 正式探索 | 半随机森林 / 数据荒野 |
-| Level8 | Phase 3 | 正式探索 | 矿区 / 深层资源 |
-| Level9~10 + Hub | Phase 4 | 基地成长 | 科技树、存储、传送 |
-| Level11~13 | Phase 5 | 中后期探索 | 半随机区域、词缀、撤离 |
-| Level14 | Phase 6 | 最终前置 | AI Core 准备关 |
+| **Level7** | **Phase 2** | **武器使用教学** | 武器选择、准星瞄准、近战 / 远程攻击、训练靶 |
+| Level8 | Phase 3 | 正式探索 | 半随机森林 / 数据荒野 |
+| Level9 | Phase 3 | 正式探索 | 矿区 / 深层资源 |
+| Level10~11 + Hub | Phase 4 | 基地成长 | 科技树、存储、传送 |
+| Level12~14 | Phase 5 | 中后期探索 | 半随机区域、词缀、撤离 |
+| Level15 | Phase 6 | 最终前置 | AI Core 准备关 |
 | Final | Phase 7 | 结局 | AI Core 与最终选择 |
+
+### 4.0.1 关卡过渡链（更新后）
+
+```text
+Level5 → Level6 → Level7 → Level8 → Level9 → Level10 → … → Level15 → Final
+```
+
+| 过渡 | 含义 |
+|---|---|
+| Level5 → Level6 | 制造教学完成后进入手持工具教学 |
+| Level6 → Level7 | 工具教学完成后进入武器使用教学 |
+| Level7 → Level8 | 武器教学完成后进入第一次正式探索 |
+| Level8 → Level9 | 森林 / 数据荒野完成后进入矿区 |
+| Level9 及之后 | 各阶段内容按上表顺延 +1 |
 
 整个游戏可以分为 **7** 个主要阶段。
 
@@ -161,7 +177,7 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 - Level4
 
 目标：让玩家逐步掌握移动、跑酷、Buff、拾取与背包等**基础操作**。  
-**注意：Level1~4 并不覆盖全部基础玩法**；制造与手持工具将在 Level5、Level6 单独教学。
+**注意：Level1~4 并不覆盖全部基础玩法**；制造、手持工具与武器使用将在 Level5、Level6、Level7 单独教学。
 
 ---
 
@@ -315,14 +331,15 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 
 ---
 
-# Phase 2：制造与工具教学
+# Phase 2：制造、工具与武器教学
 
 对应：
 
 - Level5
 - Level6
+- Level7
 
-目标：在独立关卡中分别教会玩家**制作物品**与**使用手持工具**，避免 Level1~4 信息过载。
+目标：在独立关卡中分别教会玩家**制作物品**、**使用手持工具**与**使用武器**，避免 Level1~4 信息过载；完成后再进入第一次正式探索区域（Level8）。
 
 ---
 
@@ -418,7 +435,7 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 ↓
 激活传送门
 ↓
-按 Y 进入 Level7（第一次正式探索区域）
+按 Y 进入 Level7（武器使用教学关）
 ```
 
 ### 本关引入的新系统
@@ -429,20 +446,171 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 - 工具栏选中 + 左键 / F 对目标使用
 - 工具使用动画或简单特效（可选）
 
+**与武器系统的边界**：本关只教**工具**（采矿、伐木、修复），不教战斗伤害；武器系统在 Level7 单独教学。
+
+---
+
+## 4.7 Level7：武器使用教学关
+
+### 定位
+
+第一个正式**武器 / 战斗 onboarding** 教学关。玩家在此学习从工具栏装备武器、准星瞄准、左键攻击，以及近战与远程两种基础攻击方式。**本关位于 Level6 手持工具教学之后、Level8 第一次正式探索之前。**
+
+### 阶段
+
+- **Phase**：Phase 2 延伸 — 工具教学后的基础玩法扩展
+- **位置**：Level6 之后，Level8 半随机探索之前
+- **目的**：在更大探索区域开放前，教会武器选择、瞄准、攻击与简单战斗目标交互
+
+### 教学内容
+
+1. **武器选择**
+   - 使用数字键 / 滚轮从工具栏选中武器
+   - 选中后武器出现在手中（第一 / 第三人称均需可见）
+   - 理解**工具**与**武器**的区别：工具用于资源 / 修复交互，武器用于对目标造成伤害
+
+2. **武器瞄准**
+   - 准星为统一瞄准标准
+   - 鼠标控制视角 / 瞄准
+   - WASD 移动与现有 aim-facing 移动保持一致
+   - 第三人称仍基于准星进行目标判定
+
+3. **武器攻击**
+   - 左键使用当前选中的武器
+   - **近战武器**（如基础剑 / Basic Sword）：近距离挥击，在玩家前方 / 准星方向范围内命中
+   - **远程武器**（初版可选木弓 / 简易枪械 / 训练发射器之一）：从相机 / 准星方向发射投射物或 Hitscan
+   - 若尚无弹药系统：远程武器使用**无限训练弹药**；若已有弹药系统：再接入消耗逻辑
+
+4. **目标反馈**
+   - 场景放置训练假人 / 远程靶（`DamageableTarget` / `WeaponInteractableTarget`）
+   - 命中时显示：伤害数字或命中闪白、目标生命值下降、生命归零后销毁或停用
+
+### 推荐首版武器类型
+
+| 类型 | 示例 | 教学重点 |
+|---|---|---|
+| 基础近战武器 | Basic Sword / 基础剑 | 攻击范围、命中判定、与工具左键行为的差异 |
+| 基础远程武器（三选一） | Wooden Bow / 木弓；Simple Prototype Gun / 简易枪械；Training Blaster / 训练发射器 | 准星方向射击、远程命中、可选弹药（初版可无） |
+
+> 架构上应预留 **Firearm / 枪械** 扩展位，但 Level7 首版只需一种简单远程原型，不必一次性做完整枪战系统。
+
+### 推荐场景结构
+
+- 固定小型教学区域，分 3 个任务区：
+  1. **近战区**：近处训练假人（Dummy）
+  2. **远程区**：远处训练靶（Ranged Target）
+  3. **出口区**：完成两项命中后激活的传送门 / 信标
+
+### 推荐关卡目标文案
+
+```text
+目标：选择基础剑
+目标：攻击训练假人一次
+目标：选择远程武器
+目标：击中远处训练靶
+目标：激活传送门进入下一关
+```
+
+### 完成条件
+
+```text
+使用近战武器成功命中近处训练假人
+↓
+使用远程武器成功命中远处训练靶
+↓
+激活传送门 / 信标
+↓
+按 Y 进入 Level8（第一次正式探索区域）
+```
+
+### 本关引入的新系统
+
+- `WeaponKind` / `WeaponData`（或扩展 `ItemData` 的武器字段）
+- `PlayerWeaponController` / `WeaponUseController`
+- `DamageableTarget` / `WeaponInteractableTarget`
+- 近战 Hit 检测 或 远程 Projectile / Hitscan 原型
+- `WeaponHeldVisual` / `WeaponAnimationProfile`（手持与攻击反馈）
+- 武器专用进度管理（如 `Level7ProgressionManager` + HUD）
+
+### 武器系统架构要求（Blueprint 规划，尚未实现）
+
+**原则：武器逻辑不得混入 `ToolKind`。** 工具与武器可共享工具栏、手持视觉、准星与左键入口，但业务逻辑分离：
+
+| 维度 | 工具（Tool） | 武器（Weapon） |
+|---|---|---|
+| 用途 | 采矿、伐木、修复、采集 | 对战斗目标造成伤害 |
+| 交互对象 | `ToolInteractable` | `DamageableTarget` / `WeaponTarget` |
+| 结果 | 掉落资源、修复事件、任务推进 | 伤害、击杀、战斗反馈 |
+| 数据 | `ToolKind` | `WeaponKind` |
+
+**建议脚本模块：**
+
+```text
+WeaponKind.cs
+WeaponData.cs（或 ItemData 武器扩展字段）
+WeaponUseController.cs
+PlayerWeaponController.cs
+WeaponInteractableTarget.cs
+DamageableTarget.cs
+ProjectileSystem 或 HitscanSystem（二选一或并存）
+AmmoData / AmmoKind.cs（后续）
+WeaponHeldVisual.cs
+WeaponAnimationProfile.cs
+```
+
+**建议 `WeaponKind` 枚举：**
+
+```text
+None
+Melee
+Bow
+Firearm
+TrainingBlaster
+```
+
+**建议 `ItemData` 武器相关字段（规划）：**
+
+```text
+ItemCategory.Weapon
+WeaponKind weaponKind
+bool isWeapon
+int damage
+float attackRange
+float attackCooldown
+bool usesAmmo
+ItemKind ammoItemKind
+GameObject projectilePrefab
+GameObject handheldWeaponPrefab
+AnimationClip attackAnimationClip
+AnimationClip reloadAnimationClip（后续）
+bool isMelee
+bool isRanged
+```
+
+**共享能力（工具 + 武器）：**
+
+- 均可从工具栏选中
+- 均可显示在手中（第一 / 第三人称）
+- 均可使用左键
+- 均使用准星瞄准
+- 均基于 `ItemData` 与手持视觉系统
+
 ---
 
 # Phase 3：第一次正式探索阶段
 
 对应：
 
-- Level7
 - Level8
+- Level9
 
 目标：玩家正式进入半随机地图，开始使用科技树。
 
 ---
 
-## 5.1 Level7：随机森林 / 数据荒野区域
+## 5.1 Level8：随机森林 / 数据荒野区域
+
+> **说明**：本节内容为原 Blueprint 中的 Level7 探索计划，因新增 Level7 武器教学关，整体顺延为 Level8。
 
 ### 定位
 
@@ -476,7 +644,7 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 ```text
 收集 3 个 Data Core
 建造或修复 Signal Relay
-进入 Level8
+进入 Level9
 ```
 
 ### 新系统
@@ -488,7 +656,9 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 
 ---
 
-## 5.2 Level8：矿区 / 深层资源区域
+## 5.2 Level9：矿区 / 深层资源区域
+
+> **说明**：本节内容为原 Blueprint 中的 Level8 矿区计划，顺延为 Level9。
 
 ### 定位
 
@@ -541,8 +711,8 @@ Explore → Collect → Build → Research → Unlock → Explore Deeper
 
 对应：
 
-- Level9
 - Level10
+- Level11
 - Hub / Base Scene
 
 目标：让玩家拥有长期成长空间。
@@ -695,9 +865,9 @@ Core Access Protocol
 
 对应：
 
-- Level11
 - Level12
 - Level13
+- Level14
 
 目标：让游戏开始具有重复游玩价值。
 
@@ -785,7 +955,7 @@ Core Access Protocol
 
 对应：
 
-- Level14
+- Level15
 - Final Preparation
 
 目标：让玩家使用前面所有科技，准备进入最终区域。
@@ -1057,7 +1227,7 @@ Run Save / Exploration Save
 ```json
 {
   "saveVersion": "0.1",
-  "currentScene": "Level7",
+  "currentScene": "Level8",
   "player": {
     "position": [0, 2, 0],
     "health": 80,
@@ -1168,6 +1338,21 @@ CraftingSystem.cs
 RecipeData.cs
 CraftingBench.cs
 CraftingUI.cs
+```
+
+### 武器系统（Level7 起规划）
+
+```text
+WeaponKind.cs
+WeaponData.cs
+WeaponUseController.cs
+PlayerWeaponController.cs
+DamageableTarget.cs
+WeaponInteractableTarget.cs
+HitscanSystem.cs / ProjectileSystem.cs
+WeaponHeldVisual.cs
+WeaponAnimationProfile.cs
+AmmoKind.cs / AmmoData.cs（后续）
 ```
 
 ### 建造系统
@@ -1368,13 +1553,14 @@ Q3 Collect Four Buff Modules
 Q4 Master Inventory and Hotbar
 Q5 Craft First Items at Workbench
 Q6 Learn Handheld Tools
-Q7 Explore Random Forest Zone
-Q8 Unlock First Tech Node
-Q9 Repair Deep Relay
-Q10 Build Base Generator
-Q11 Unlock Core Access Protocol
-Q12 Enter AI Core
-Q13 Make Final Choice
+Q7 Learn Weapon Use
+Q8 Explore Random Forest Zone
+Q9 Unlock First Tech Node
+Q10 Repair Deep Relay
+Q11 Build Base Generator
+Q12 Unlock Core Access Protocol
+Q13 Enter AI Core
+Q14 Make Final Choice
 ```
 
 ---
@@ -1479,12 +1665,42 @@ LevelManager 配置 Level6 → Level7
 
 ```text
 玩家可以在 Level6 装备工具并完成采矿 / 伐木 / 修复教学任务
-完成后进入 Level7
+完成后进入 Level7（武器使用教学关）
 ```
 
 ---
 
-## 14.5 Milestone 5：科技树初版
+## 14.5 Milestone 5：Level7 武器使用教学关
+
+目标：
+
+```text
+完成第一个正式武器 / 战斗 onboarding 教学关
+```
+
+需要完成：
+
+```text
+WeaponKind / WeaponData（或 ItemData 武器字段）
+PlayerWeaponController / WeaponUseController
+DamageableTarget / 训练假人与远程靶
+近战命中 + 远程命中原型
+武器栏选中 + 准星瞄准 + 左键攻击
+Level7 场景与胜利条件
+LevelManager 配置 Level7 → Level8
+```
+
+完成标准：
+
+```text
+玩家可以在 Level7 装备近战武器并命中训练假人
+装备远程武器并命中远处训练靶
+完成后进入 Level8
+```
+
+---
+
+## 14.6 Milestone 6：科技树初版
 
 目标：
 
@@ -1512,7 +1728,7 @@ TechTreeUI
 
 ---
 
-## 14.6 Milestone 6：存档系统初版
+## 14.7 Milestone 7：存档系统初版
 
 目标：
 
@@ -1542,12 +1758,12 @@ SaveData
 
 ---
 
-## 14.7 Milestone 7：Level7 半随机地图
+## 14.8 Milestone 8：Level8 半随机地图
 
 目标：
 
 ```text
-完成第一个正式随机探索区域
+完成第一个正式随机探索区域（原 Level7 计划，现顺延为 Level8）
 ```
 
 需要完成：
@@ -1560,18 +1776,19 @@ LevelGenerator
 固定出生点
 固定终点
 随机 Seed 保存
+ModularLevelAssembler 模块化起点对齐 Level8（实现阶段）
 ```
 
 完成标准：
 
 ```text
-每次进入 Level7 地图布局有变化
+每次进入 Level8 地图布局有变化
 但玩家一定可以完成目标
 ```
 
 ---
 
-## 14.8 Milestone 8：基地系统初版
+## 14.9 Milestone 9：基地系统初版
 
 目标：
 
@@ -1599,7 +1816,7 @@ Teleport Console
 
 ---
 
-## 14.9 Milestone 9：中期内容扩展
+## 14.10 Milestone 10：中期内容扩展
 
 目标：
 
@@ -1610,8 +1827,8 @@ Teleport Console
 需要完成：
 
 ```text
-Level8 矿区
-Level11 废墟
+Level9 矿区
+Level12 废墟
 高级资源
 敌人或环境伤害
 区域词缀
@@ -1627,7 +1844,7 @@ Level11 废墟
 
 ---
 
-## 14.10 Milestone 10：最终关与结局
+## 14.11 Milestone 11：最终关与结局
 
 目标：
 
@@ -1662,11 +1879,11 @@ Return to Main Menu
 
 1. 当前已有系统是否发生变化
 2. Level1~Level4 是否仍作为**分段**基础系统教学关（非全部基础内容）
-3. Level5 / Level6 制造与手持工具教学是否已实现
+3. Level5 / Level6 / Level7 制造、手持工具与武器教学是否已实现
 4. Level4 是否已经形成拾取与背包闭环
 5. 科技树是否已经实现
 6. 存档系统保存了哪些内容
-7. Level7 及之后随机地图是否已经加入
+7. Level8 及之后随机地图是否已经加入
 8. 新增脚本是否需要写入脚本地图
 9. 新增资源、建筑、科技节点是否需要更新表格
 10. 当前开发 Milestone 到了哪一步
@@ -1681,7 +1898,7 @@ Return to Main Menu
 当前最优先任务是：
 
 ```text
-先完成 Level4 拾取与背包教学闭环，再依次实现 Level5 制造教学关与 Level6 手持工具教学关。
+先完成 Level4 拾取与背包教学闭环，再依次实现 Level5 制造教学关、Level6 手持工具教学关与 Level7 武器使用教学关。
 ```
 
 具体顺序：
@@ -1690,11 +1907,12 @@ Return to Main Menu
 1. Level4：明确胜利条件，配置进入 Level5
 2. Level5：Crafting Bench + 制作 UI + 教学配方 + 进入 Level6
 3. Level6：手持工具 + 场景交互 + 修复任务 + 进入 Level7
-4. 增加最基础自动存档
-5. Level7：第一个半随机探索区域
+4. Level7：武器选择 + 准星瞄准 + 近战 / 远程攻击 + 训练靶 + 进入 Level8
+5. 增加最基础自动存档
+6. Level8：第一个半随机探索区域
 ```
 
-完成 Level4~Level6 后，玩家才完整掌握「拾取 → 制造 → 使用工具 → 探索」的基础链路，游戏从“功能原型”升级为“可玩的基础版本”。
+完成 Level4~Level7 后，玩家才完整掌握「拾取 → 制造 → 使用工具 → 使用武器 → 探索」的基础链路，游戏从“功能原型”升级为“可玩的基础版本”。
 
 ---
 
@@ -1704,8 +1922,8 @@ Return to Main Menu
 
 > 以 AI 数字世界为主题的轻生存建造探索游戏。  
 > **Level1~Level4** 为分段基础系统教学（移动、跑酷、Buff、拾取与背包），**不包含全部基础玩法**。  
-> **Level5** 专门教学制造 / 制作，**Level6** 专门教学手持工具使用。  
-> 从 **Level7** 起进入半随机生成的探索区域，通过收集资源、建造设施、解锁科技树和升级基地持续成长。  
+> **Level5** 专门教学制造 / 制作，**Level6** 专门教学手持工具使用，**Level7** 专门教学武器选择、瞄准与攻击。  
+> 从 **Level8** 起进入半随机生成的探索区域，通过收集资源、建造设施、解锁科技树和升级基地持续成长。  
 > 游戏中途通过存档系统记录玩家进度，包括关卡、背包、科技树、基地、随机地图 Seed 等。  
 > 最终玩家进入 AI Core，完成修复、关闭或融合 AI 的最终选择，从而达成明确结局。
 

@@ -39,8 +39,8 @@ public static class ModularLevelAssembler
             return;
         }
 
-        // Levels 4–6 keep authored placeholder builders on first visit; modular generation starts at Level 7.
-        if (levelIndex < 7)
+        // Levels 4–7 keep authored layouts on first visit; modular generation starts at Level 8 (Blueprint v0.2).
+        if (levelIndex < 8)
         {
             return;
         }

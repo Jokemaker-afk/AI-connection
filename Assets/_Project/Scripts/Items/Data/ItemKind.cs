@@ -47,6 +47,7 @@ public enum ItemKind
     Furnace,
     Bandage,
     BasicSword,
+    TrainingBlaster,
     KeyFragment,
     Torch,
     BasicKnife,
@@ -328,14 +329,34 @@ public static class ItemKindUtility
         return default;
     }
 
+    public static bool IsWeapon(ItemKind kind)
+    {
+        return ItemCatalog.TryGet(kind, out ItemData data) && data.IsWeapon;
+    }
+
     public static WeaponKind GetWeaponKind(ItemKind kind)
     {
         if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsValid)
         {
+            if (data.Weapon.IsWeapon)
+            {
+                return data.Weapon.WeaponKind;
+            }
+
             return data.WeaponKind;
         }
 
         return WeaponKind.None;
+    }
+
+    public static WeaponProfile GetWeaponProfile(ItemKind kind)
+    {
+        if (ItemCatalog.TryGet(kind, out ItemData data) && data.IsWeapon)
+        {
+            return data.Weapon;
+        }
+
+        return default;
     }
 
     public static string GetRequiredToolPrompt(ToolKind required)

@@ -25,6 +25,8 @@ public static class GameplaySceneCatalog
                 return 6;
             case "Level7":
                 return 7;
+            case "Level8":
+                return 8;
             default:
                 return 0;
         }
@@ -47,6 +49,8 @@ public static class GameplaySceneCatalog
             case "Level6":
                 return new Vector3(0f, 0f, -6f);
             case "Level7":
+                return new Vector3(0f, 0f, -2f);
+            case "Level8":
                 return new Vector3(0f, 0f, -2f);
             default:
                 return Vector3.zero;
@@ -92,6 +96,11 @@ public static class GameplaySceneCatalog
         if (level >= 6)
         {
             abilities |= GameplayAbility.HandheldTools;
+        }
+
+        if (level >= 7)
+        {
+            abilities |= GameplayAbility.WeaponCombat;
         }
 
         return abilities;

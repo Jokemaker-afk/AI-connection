@@ -25,11 +25,13 @@ public struct ItemData
     public GameObject PlacedPrefab;
     public Sprite Icon;
     public HandheldToolProfile HandheldTool;
+    public WeaponProfile Weapon;
     public WeaponKind WeaponKind;
     public GameObject FutureModelPrefab;
     public Texture FutureTextureReference;
 
     public bool IsValid => ItemKindUtility.IsValid(Id);
     public bool IsHandheldTool => HandheldTool.IsTool;
+    public bool IsWeapon => Weapon.IsWeapon || (WeaponKind != WeaponKind.None && Category == ItemCategory.Weapon);
     public string DisplayNameChinese => DisplayName;
 }

@@ -249,6 +249,9 @@ public static class GameplayFoundationBootstrap
             case "Level7":
                 EnsureLevel7Content();
                 break;
+            case "Level8":
+                EnsureLevel8Content();
+                break;
         }
     }
 
@@ -342,6 +345,16 @@ public static class GameplayFoundationBootstrap
         if (GameObject.Find("Level7Arena") == null)
         {
             Level7PlaceholderBuilder.Generate(true);
+        }
+
+        Level7ProgressionBootstrap.EnsureLevel7Progression();
+    }
+
+    static void EnsureLevel8Content()
+    {
+        if (GameObject.Find("Level8Arena") == null)
+        {
+            Level8PlaceholderBuilder.Generate(true);
         }
     }
 

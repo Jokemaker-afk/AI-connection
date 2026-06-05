@@ -4,6 +4,7 @@ public static class GameplayLayers
 {
     public const string PickupItemLayerName = "PickupItem";
     public const string PlayerLayerName = "Player";
+    public const string EnemyLayerName = "Enemy";
 
     public static int PickupItem
     {
@@ -23,8 +24,45 @@ public static class GameplayLayers
         }
     }
 
+    public static int Enemy
+    {
+        get
+        {
+            int layer = LayerMask.NameToLayer(EnemyLayerName);
+            return layer >= 0 ? layer : 0;
+        }
+    }
+
     public static bool HasPickupItemLayer => LayerMask.NameToLayer(PickupItemLayerName) >= 0;
     public static bool HasPlayerLayer => LayerMask.NameToLayer(PlayerLayerName) >= 0;
+    public static bool HasEnemyLayer => LayerMask.NameToLayer(EnemyLayerName) >= 0;
+
+    public static LayerMask EnemyMask
+    {
+        get
+        {
+            if (!HasEnemyLayer)
+            {
+                return 1 << 0;
+            }
+
+            return 1 << Enemy;
+        }
+    }
+
+    /// <summary>Raycasts for weapons and combat (Enemy layer, or Default fallback).</summary>
+    public static LayerMask CombatTargetMask
+    {
+        get
+        {
+            if (HasEnemyLayer)
+            {
+                return EnemyMask;
+            }
+
+            return 1 << 0;
+        }
+    }
 
     public static LayerMask PickupItemMask
     {
@@ -134,6 +172,16 @@ public static class GameplayLayers
         }
 
         SetLayerRecursively(target, PlayerLayerName);
+    }
+
+    public static void TrySetEnemyLayer(GameObject target)
+    {
+        if (target == null || !HasEnemyLayer)
+        {
+            return;
+        }
+
+        SetLayerRecursively(target, Enemy);
     }
 
     static void SetLayerRecursively(GameObject obj, int layer)

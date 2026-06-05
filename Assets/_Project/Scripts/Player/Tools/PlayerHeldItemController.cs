@@ -70,7 +70,11 @@ public class PlayerHeldItemController : MonoBehaviour
             ReparentHeldItem(firstPerson);
         }
 
-        if (!ItemKindUtility.IsHandheldTool(equippedKind))
+        if (ItemKindUtility.IsWeapon(equippedKind))
+        {
+            ApplyWeaponHeldTransform(activeHeldInstance.transform, firstPerson);
+        }
+        else if (!ItemKindUtility.IsHandheldTool(equippedKind))
         {
             ApplyPlaceableHeldTransform(activeHeldInstance.transform, firstPerson);
         }
@@ -114,9 +118,20 @@ public class PlayerHeldItemController : MonoBehaviour
             : null;
     }
 
+    public HandheldWeaponVisual GetActiveWeaponVisual()
+    {
+        return activeHeldInstance != null
+            ? activeHeldInstance.GetComponentInChildren<HandheldWeaponVisual>(true)
+            : null;
+    }
+
+    public Transform ActiveHeldTransform => activeHeldInstance != null ? activeHeldInstance.transform : null;
+
     public static bool ShouldShowHeldVisual(ItemKind kind)
     {
-        return ItemKindUtility.IsHandheldTool(kind) || ItemKindUtility.IsPlaceable(kind);
+        return ItemKindUtility.IsHandheldTool(kind)
+            || ItemKindUtility.IsWeapon(kind)
+            || ItemKindUtility.IsPlaceable(kind);
     }
 
     void SpawnHeldVisual(ItemKind itemKind)
@@ -141,6 +156,10 @@ public class PlayerHeldItemController : MonoBehaviour
         if (ItemKindUtility.IsHandheldTool(itemKind))
         {
             ConfigureToolLabel(activeHeldInstance.transform, firstPerson);
+        }
+        else if (ItemKindUtility.IsWeapon(itemKind))
+        {
+            ApplyWeaponHeldTransform(activeHeldInstance.transform, firstPerson);
         }
         else
         {
@@ -175,12 +194,42 @@ public class PlayerHeldItemController : MonoBehaviour
             ApplyToolTransform(activeHeldInstance.transform, data.HandheldTool, firstPerson);
             ConfigureToolLabel(activeHeldInstance.transform, firstPerson);
         }
+        else if (ItemKindUtility.IsWeapon(equippedKind) && ItemCatalog.TryGet(equippedKind, out ItemData weaponData))
+        {
+            ApplyWeaponHeldTransform(activeHeldInstance.transform, firstPerson);
+        }
         else
         {
             ApplyPlaceableHeldTransform(activeHeldInstance.transform, firstPerson);
         }
 
         EnsureRenderersEnabled(activeHeldInstance);
+    }
+
+    void ApplyWeaponHeldTransform(Transform heldTransform, bool firstPerson)
+    {
+        if (heldTransform == null || !ItemCatalog.TryGet(equippedKind, out ItemData data))
+        {
+            return;
+        }
+
+        WeaponProfile profile = data.Weapon;
+        if (firstPerson)
+        {
+            heldTransform.localPosition = profile.FirstPersonLocalPosition;
+            heldTransform.localEulerAngles = profile.FirstPersonLocalEuler;
+            heldTransform.localScale = profile.FirstPersonLocalScale.sqrMagnitude > 0.001f
+                ? profile.FirstPersonLocalScale
+                : Vector3.one;
+        }
+        else
+        {
+            heldTransform.localPosition = profile.ThirdPersonLocalPosition;
+            heldTransform.localEulerAngles = profile.ThirdPersonLocalEuler;
+            heldTransform.localScale = profile.ThirdPersonLocalScale.sqrMagnitude > 0.001f
+                ? profile.ThirdPersonLocalScale
+                : Vector3.one;
+        }
     }
 
     void ApplyPlaceableHeldTransform(Transform heldTransform, bool firstPerson)
