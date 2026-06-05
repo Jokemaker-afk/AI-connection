@@ -226,4 +226,9 @@ public static class GameplayLayers
 
         SetLayerRecursively(obj, layer);
     }
+
+    public static bool IsInLayerMask(int layer, LayerMask mask)
+    {
+        return (mask.value & (1 << layer)) != 0;
+    }
 }

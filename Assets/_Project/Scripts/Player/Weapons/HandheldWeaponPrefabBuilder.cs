@@ -14,6 +14,7 @@ public static class HandheldWeaponPrefabBuilder
 
         if (PrefabCache.TryGetValue(itemKind, out GameObject cached) && cached != null)
         {
+            EnsureMuzzlePointOnPrefab(cached, itemKind);
             return cached;
         }
 
@@ -47,6 +48,7 @@ public static class HandheldWeaponPrefabBuilder
             case WeaponKind.TrainingBlaster:
                 CreatePart(visualRoot.transform, "Body", new Vector3(0f, 0f, 0.05f), new Vector3(0.14f, 0.1f, 0.28f), bladeColor);
                 CreatePart(visualRoot.transform, "Barrel", new Vector3(0f, 0.02f, 0.22f), new Vector3(0.05f, 0.05f, 0.18f), bladeColor * 0.85f);
+                AddMuzzlePoint(visualRoot.transform, new Vector3(0f, 0.02f, 0.32f));
                 break;
             default:
                 CreatePart(visualRoot.transform, "Body", Vector3.zero, new Vector3(0.16f, 0.16f, 0.16f), bladeColor);
@@ -95,5 +97,34 @@ public static class HandheldWeaponPrefabBuilder
             material.color = color;
             renderer.sharedMaterial = material;
         }
+    }
+
+    static void AddMuzzlePoint(Transform parent, Vector3 localPosition)
+    {
+        var muzzleObject = new GameObject("WeaponMuzzlePoint");
+        muzzleObject.transform.SetParent(parent, false);
+        muzzleObject.transform.localPosition = localPosition;
+        muzzleObject.AddComponent<WeaponMuzzlePoint>();
+    }
+
+    static void EnsureMuzzlePointOnPrefab(GameObject prefab, ItemKind itemKind)
+    {
+        if (!ItemCatalog.TryGet(itemKind, out ItemData data) || data.Weapon.AttackMode != WeaponAttackMode.Projectile)
+        {
+            return;
+        }
+
+        if (prefab.GetComponentInChildren<WeaponMuzzlePoint>(true) != null)
+        {
+            return;
+        }
+
+        Transform visualRoot = prefab.transform.Find("VisualRoot");
+        if (visualRoot == null)
+        {
+            return;
+        }
+
+        AddMuzzlePoint(visualRoot, new Vector3(0f, 0.02f, 0.32f));
     }
 }

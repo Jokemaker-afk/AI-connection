@@ -35,6 +35,11 @@ public static class ItemDropUtility
 
     public static Vector3 GetDropForward(Transform player, Camera camera)
     {
+        if (AimReferenceProvider.TryGetFlatAim(out Vector3 flatAim))
+        {
+            return flatAim;
+        }
+
         if (camera != null)
         {
             var cameraController = camera.GetComponent<PlayerCameraController>();

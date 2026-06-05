@@ -244,7 +244,7 @@ public static class ItemCatalog
         RegisterWeapon(
             ItemKind.TrainingBlaster,
             "训练发射器",
-            CreateRangedWeaponProfile(WeaponKind.TrainingBlaster, damage: 14f, range: 28f, cooldown: 0.35f, knockback: 2.5f),
+            CreateProjectileWeaponProfile(WeaponKind.TrainingBlaster, damage: 15f, range: 28f, cooldown: 0.4f, knockback: 2.5f),
             new Color(0.55f, 0.82f, 0.95f),
             descriptionChinese: "第七关远程训练武器，无限训练弹药。",
             craftable: false);
@@ -327,6 +327,24 @@ public static class ItemCatalog
             ThirdPersonLocalPosition = new Vector3(0.12f, 0.02f, 0.14f),
             ThirdPersonLocalEuler = new Vector3(-6f, -92f, 0f),
         };
+    }
+
+    static WeaponProfile CreateProjectileWeaponProfile(WeaponKind kind, float damage, float range, float cooldown, float knockback)
+    {
+        WeaponProfile profile = CreateRangedWeaponProfile(kind, damage, range, cooldown, knockback);
+        profile.AttackMode = WeaponAttackMode.Projectile;
+        profile.ProjectileKind = ProjectileKind.BasicBullet;
+        profile.ProjectileSpeed = 25f;
+        profile.ProjectileMaxLifetime = 4f;
+        profile.ProjectileMaxDistance = range;
+        profile.ProjectileRadius = 0.08f;
+        profile.ProjectileDestroyOnHit = true;
+        profile.ProjectileCanPierce = false;
+        profile.ProjectileMaxPierceCount = 0;
+        profile.ProjectileUseGravity = false;
+        profile.ProjectileGravityScale = 0f;
+        profile.FallbackRecoilDistance = 0.14f;
+        return profile;
     }
 
     static WeaponProfile CreateWeaponFromLegacyKind(WeaponKind weaponKind)

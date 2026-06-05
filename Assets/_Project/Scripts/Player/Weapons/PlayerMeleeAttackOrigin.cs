@@ -18,7 +18,7 @@ public class PlayerMeleeAttackOrigin : MonoBehaviour
     [SerializeField] float debugArcAngle = 42f;
     [SerializeField] int debugArcSegments = 24;
 
-    PlayerCameraController cameraController;
+    AimReferenceProvider aimReference;
     Transform playerRoot;
     Vector3 lastAimForward = Vector3.forward;
 
@@ -49,7 +49,7 @@ public class PlayerMeleeAttackOrigin : MonoBehaviour
     void Awake()
     {
         playerRoot = transform.parent != null ? transform.parent : transform;
-        cameraController = FindFirstObjectByType<PlayerCameraController>();
+        aimReference = playerRoot != null ? playerRoot.GetComponent<AimReferenceProvider>() : null;
     }
 
     void LateUpdate()
@@ -71,18 +71,22 @@ public class PlayerMeleeAttackOrigin : MonoBehaviour
             playerRoot = transform.parent != null ? transform.parent : transform;
         }
 
-        if (cameraController == null)
+        if (aimReference == null && playerRoot != null)
         {
-            cameraController = FindFirstObjectByType<PlayerCameraController>();
+            aimReference = playerRoot.GetComponent<AimReferenceProvider>();
         }
 
         Vector3 aimForward = GetImmediateAimForward();
         Vector3 aimRight = Vector3.Cross(Vector3.up, aimForward).normalized;
         Vector3 feet = playerRoot.position;
         float originHeight = meleeAttackOriginLocalPosition.y;
-        if (syncOriginHeightWithCameraPivot && cameraController != null)
+        if (syncOriginHeightWithCameraPivot)
         {
-            originHeight = cameraController.ThirdPersonLookAtHeight;
+            PlayerCameraController cameraController = FindFirstObjectByType<PlayerCameraController>();
+            if (cameraController != null)
+            {
+                originHeight = cameraController.ThirdPersonLookAtHeight;
+            }
         }
 
         Vector3 worldPosition = feet
@@ -96,17 +100,14 @@ public class PlayerMeleeAttackOrigin : MonoBehaviour
 
     Vector3 GetImmediateAimForward()
     {
-        if (cameraController != null)
+        if (aimReference != null && !aimReference.IsWorldAimingBlocked)
         {
-            return cameraController.GetImmediateAimForward();
+            return aimReference.GetFlatAimDirection();
         }
 
-        Camera camera = CrosshairRayUtility.ResolveGameplayCamera();
-        if (camera != null)
+        if (AimReferenceProvider.TryGetFlatAim(out Vector3 flatAim))
         {
-            Vector3 forward = camera.transform.forward;
-            forward.y = 0f;
-            return forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.forward;
+            return flatAim;
         }
 
         Vector3 rootForward = playerRoot.forward;

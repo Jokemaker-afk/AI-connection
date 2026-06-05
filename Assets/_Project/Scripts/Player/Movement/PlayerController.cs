@@ -360,6 +360,13 @@ public class PlayerController : MonoBehaviour
 
     Vector3 GetImmediateAimForward()
     {
+        if (AimReferenceProvider.Instance != null && !AimReferenceProvider.Instance.IsWorldAimingBlocked)
+        {
+            Vector3 aimForward = AimReferenceProvider.Instance.GetFlatAimDirection();
+            lastValidAimForward = aimForward;
+            return aimForward;
+        }
+
         if (cameraController != null)
         {
             Vector3 aimForward = cameraController.GetImmediateAimForward();

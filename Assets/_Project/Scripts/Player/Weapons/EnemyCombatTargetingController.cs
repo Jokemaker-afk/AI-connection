@@ -53,13 +53,19 @@ public class EnemyCombatTargetingController : MonoBehaviour
                 }
             }
 
-            if (ItemCatalog.TryGet(GetEquippedWeaponKind(), out ItemData data) && data.IsWeapon
-                && data.Weapon.IsMelee)
+            if (ItemCatalog.TryGet(GetEquippedWeaponKind(), out ItemData data) && data.IsWeapon)
             {
-                MeleeHitValidationResult preview = ValidateMeleeHit(data.Weapon, currentTarget);
-                if (!preview.InRange)
+                if (data.Weapon.IsMelee)
                 {
-                    return $"目标：{name}{healthLine}\n距离太远";
+                    MeleeHitValidationResult preview = ValidateMeleeHit(data.Weapon, currentTarget);
+                    if (!preview.InRange)
+                    {
+                        return $"目标：{name}{healthLine}\n距离太远";
+                    }
+                }
+                else if (data.Weapon.AttackMode == WeaponAttackMode.Projectile)
+                {
+                    return $"目标：{name}{healthLine}\n左键开火";
                 }
             }
 
@@ -102,6 +108,11 @@ public class EnemyCombatTargetingController : MonoBehaviour
 
         LogDebug($"Crosshair target: {currentTarget.DisplayName}");
         LogDebug($"Weapon attack target: {currentTarget.DisplayName}");
+
+        if (profile.AttackMode == WeaponAttackMode.Projectile)
+        {
+            return result;
+        }
 
         if (profile.IsRanged || profile.AttackMode == WeaponAttackMode.Hitscan)
         {
@@ -190,7 +201,7 @@ public class EnemyCombatTargetingController : MonoBehaviour
             return;
         }
 
-        lastCrosshairRay = CrosshairRayUtility.GetCrosshairRay(out lastCrosshairScreenPoint);
+        lastCrosshairRay = ResolveCrosshairRay(out lastCrosshairScreenPoint);
         if (CrosshairRayUtility.ResolveGameplayCamera() == null)
         {
             ClearTargetAndHighlight("no camera");
@@ -218,6 +229,17 @@ public class EnemyCombatTargetingController : MonoBehaviour
         }
 
         ClearTargetAndHighlight("no direct crosshair hit");
+    }
+
+    Ray ResolveCrosshairRay(out Vector2 screenPoint)
+    {
+        if (AimReferenceProvider.Instance != null && !AimReferenceProvider.Instance.IsWorldAimingBlocked)
+        {
+            screenPoint = AimReferenceProvider.Instance.GetCrosshairScreenPoint();
+            return AimReferenceProvider.Instance.GetCrosshairRay();
+        }
+
+        return CrosshairRayUtility.GetCrosshairRay(out screenPoint);
     }
 
     bool TryDirectCrosshairHit(Ray ray, LayerMask mask, out WeaponTargetCandidate candidate)

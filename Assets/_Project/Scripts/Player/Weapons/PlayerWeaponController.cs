@@ -22,6 +22,20 @@ public class PlayerWeaponController : MonoBehaviour
 
     public ItemKind EquippedWeaponKind => equippedWeaponKind;
     public bool HasEquippedWeapon => ItemKindUtility.IsWeapon(equippedWeaponKind);
+    public bool HasWeaponEquipped => HasEquippedWeapon;
+    public string EquippedWeaponLabel => ItemKindUtility.GetDisplayName(equippedWeaponKind);
+    public WeaponProfile CurrentWeaponProfile
+    {
+        get
+        {
+            if (ItemCatalog.TryGet(equippedWeaponKind, out ItemData data) && data.IsWeapon)
+            {
+                return data.Weapon;
+            }
+
+            return default;
+        }
+    }
     public string LastMessage => lastMessage;
     public bool IsAttackInProgress => attackInProgress;
 
@@ -168,6 +182,13 @@ public class PlayerWeaponController : MonoBehaviour
 
     void ExecuteAttack(WeaponProfile profile)
     {
+        if (profile.AttackMode == WeaponAttackMode.Projectile)
+        {
+            ExecuteProjectileAttack(profile);
+            attackInProgress = false;
+            return;
+        }
+
         if (combatTargeting == null)
         {
             combatTargeting = GetComponent<EnemyCombatTargetingController>();
@@ -204,7 +225,7 @@ public class PlayerWeaponController : MonoBehaviour
             return;
         }
 
-        Vector3 aimForward = targeting != null ? targeting.GetAimForward() : transform.forward;
+        Vector3 aimForward = ResolveFlatAimForward();
         LogAttack($"Damaged targets: {result.DamagedCount}");
         for (int i = 0; i < result.DamagedCount; i++)
         {
@@ -215,13 +236,37 @@ public class PlayerWeaponController : MonoBehaviour
         attackInProgress = false;
     }
 
+    void ExecuteProjectileAttack(WeaponProfile profile)
+    {
+        string weaponName = ItemKindUtility.GetDisplayName(equippedWeaponKind);
+        LogAttack($"Ranged weapon fired: {weaponName}");
+
+        Ray crosshairRay = ResolveCrosshairRay();
+        Vector3 fireOrigin = WeaponMuzzleUtility.ResolveFireOrigin(heldItemController, crosshairRay);
+        float aimDistance = profile.AttackRange > 0f ? profile.AttackRange : 40f;
+        Vector3 fireDirection = WeaponMuzzleUtility.ResolveFireDirection(fireOrigin, aimDistance);
+
+        WeaponProjectileSpawner.Spawn(profile, profile.WeaponKind, fireOrigin, fireDirection, gameObject);
+        SetMessage("开火");
+    }
+
+    Ray ResolveCrosshairRay()
+    {
+        if (AimReferenceProvider.Instance != null && !AimReferenceProvider.Instance.IsWorldAimingBlocked)
+        {
+            return AimReferenceProvider.Instance.GetCrosshairRay();
+        }
+
+        return CrosshairRayUtility.GetCrosshairRay(out _);
+    }
+
     WeaponTargetingResult ResolveLegacyAttack(WeaponProfile profile)
     {
-        Ray crosshairRay = CrosshairRayUtility.GetCrosshairRay(out _);
+        Ray crosshairRay = ResolveCrosshairRay();
         PlayerMeleeAttackOrigin meleeOrigin = PlayerMeleeAttackOrigin.EnsureOnPlayer(gameObject);
         Vector3 aimForward = meleeOrigin != null
             ? meleeOrigin.AimForward
-            : (targeting != null ? targeting.GetAimForward() : transform.forward);
+            : ResolveFlatAimForward();
         Vector3 attackOrigin = meleeOrigin != null
             ? meleeOrigin.WorldPosition
             : transform.position + Vector3.up * 1.2f;
@@ -247,7 +292,7 @@ public class PlayerWeaponController : MonoBehaviour
                         : transform.position + Vector3.up * 1.2f,
                     combatTargeting.MeleeAttackOrigin != null
                         ? combatTargeting.MeleeAttackOrigin.AimForward
-                        : targeting != null ? targeting.GetAimForward() : transform.forward,
+                        : ResolveFlatAimForward(),
                     primary,
                     combatTargeting.MeleeAttackOrigin != null
                         ? combatTargeting.MeleeAttackOrigin.VerticalTolerance
@@ -364,6 +409,21 @@ public class PlayerWeaponController : MonoBehaviour
     {
         lastMessage = message;
         messageTimer = messageDuration;
+    }
+
+    Vector3 ResolveFlatAimForward()
+    {
+        if (targeting != null)
+        {
+            return targeting.GetAimForward();
+        }
+
+        if (AimReferenceProvider.TryGetFlatAim(out Vector3 flatAim))
+        {
+            return flatAim;
+        }
+
+        return Vector3.forward;
     }
 
     void LogAttack(string message)

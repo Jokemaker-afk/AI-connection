@@ -95,14 +95,28 @@ public class PlayerGameplayTargeting : MonoBehaviour
 
     public Ray GetCenterScreenRay()
     {
+        if (AimReferenceProvider.Instance != null && !AimReferenceProvider.Instance.IsWorldAimingBlocked)
+        {
+            return AimReferenceProvider.Instance.GetCrosshairRay();
+        }
+
         return CrosshairRayUtility.GetCrosshairRay(out _);
     }
 
     public Vector3 GetAimForward()
     {
+        if (AimReferenceProvider.Instance != null && !AimReferenceProvider.Instance.IsWorldAimingBlocked)
+        {
+            return AimReferenceProvider.Instance.GetFlatAimDirection();
+        }
+
         Ray crosshairRay = GetCenterScreenRay();
-        return crosshairRay.direction.normalized;
+        Vector3 forward = crosshairRay.direction;
+        forward.y = 0f;
+        return forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.forward;
     }
+
+    public Vector3 GetFlatAimForward() => GetAimForward();
 
     void UpdateTargets()
     {
@@ -699,7 +713,7 @@ public class PlayerGameplayTargeting : MonoBehaviour
             return false;
         }
 
-        Vector3 playerForward = transform.forward;
+        Vector3 playerForward = GetAimForward();
         playerForward.y = 0f;
         playerForward.Normalize();
         return Vector3.Dot(playerForward, toTarget.normalized) < -0.15f;

@@ -39,7 +39,11 @@ public static class WeaponTargetingSystem
         result.CandidatesInArea = new[] { candidate };
 
         bool canDamage;
-        if (profile.IsRanged || profile.AttackMode == WeaponAttackMode.Hitscan)
+        if (profile.AttackMode == WeaponAttackMode.Projectile)
+        {
+            canDamage = false;
+        }
+        else if (profile.IsRanged || profile.AttackMode == WeaponAttackMode.Hitscan)
         {
             canDamage = Vector3.Distance(meleeAttackOrigin, hit.point) <= profile.AttackRange + 0.5f;
         }

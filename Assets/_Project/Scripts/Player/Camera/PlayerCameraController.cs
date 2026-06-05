@@ -93,15 +93,39 @@ public class PlayerCameraController : MonoBehaviour
         }
     }
 
-    /// <summary>Horizontal aim forward from orbit yaw — matches crosshair direction.</summary>
+    /// <summary>Horizontal aim forward from center-screen crosshair ray (flattened).</summary>
     public Vector3 GetImmediateAimForward()
     {
-        return Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+        if (AimReferenceProvider.TryGetFlatAim(out Vector3 flatAim))
+        {
+            return flatAim;
+        }
+
+        return GetFlatAimFromCrosshairRay();
     }
 
     public Vector3 GetImmediateAimRight()
     {
-        return Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
+        if (AimReferenceProvider.Instance != null && !AimReferenceProvider.Instance.IsWorldAimingBlocked)
+        {
+            return AimReferenceProvider.Instance.GetFlatAimRight();
+        }
+
+        Vector3 forward = GetImmediateAimForward();
+        return Vector3.Cross(Vector3.up, forward).normalized;
+    }
+
+    Vector3 GetFlatAimFromCrosshairRay()
+    {
+        Ray ray = GetCrosshairRay(viewCamera);
+        Vector3 flat = ray.direction;
+        flat.y = 0f;
+        if (flat.sqrMagnitude > 0.0001f)
+        {
+            return flat.normalized;
+        }
+
+        return Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
     }
 
     public Vector3 GetPlanarForward() => GetImmediateAimForward();

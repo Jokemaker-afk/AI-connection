@@ -103,6 +103,11 @@ public class PlayerPlacementController : MonoBehaviour
             previewRoot.transform.position = position;
             previewRoot.SetActive(true);
             previewRenderer.sharedMaterial = valid ? previewValidMaterial : previewInvalidMaterial;
+
+            if (AimReferenceProvider.Instance != null && AimReferenceProvider.Instance.ShowAimReferenceDebug)
+            {
+                Debug.Log($"[AimReference] Placement hit point: {position}");
+            }
         }
         else
         {
@@ -123,6 +128,11 @@ public class PlayerPlacementController : MonoBehaviour
 
     Ray GetPlacementRay()
     {
+        if (AimReferenceProvider.Instance != null && !AimReferenceProvider.Instance.IsWorldAimingBlocked)
+        {
+            return AimReferenceProvider.Instance.GetCrosshairRay();
+        }
+
         if (targeting != null)
         {
             return targeting.GetCenterScreenRay();

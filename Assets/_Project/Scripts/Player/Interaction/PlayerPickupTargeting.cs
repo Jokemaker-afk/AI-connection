@@ -93,7 +93,7 @@ public class PlayerPickupTargeting : MonoBehaviour
     public void UpdatePickupTarget()
     {
         viewCamera = CrosshairRayUtility.ResolveGameplayCamera();
-        lastCrosshairRay = CrosshairRayUtility.GetCrosshairRay(out lastCrosshairScreenPoint);
+        lastCrosshairRay = ResolveCrosshairRay(out lastCrosshairScreenPoint);
         Vector3 aimDirection = lastCrosshairRay.direction.normalized;
 
         selectedPickup = null;
@@ -252,6 +252,17 @@ public class PlayerPickupTargeting : MonoBehaviour
         Debug.Log(
             $"[Pickup] {targetKind} selected: {selectedPickup.ItemKind} x{selectedPickup.Amount} | " +
             $"Source: {lastResolveSource} | Within pickup range: {IsWithinPlayerReach}");
+    }
+
+    Ray ResolveCrosshairRay(out Vector2 screenPoint)
+    {
+        if (AimReferenceProvider.Instance != null && !AimReferenceProvider.Instance.IsWorldAimingBlocked)
+        {
+            screenPoint = AimReferenceProvider.Instance.GetCrosshairScreenPoint();
+            return AimReferenceProvider.Instance.GetCrosshairRay();
+        }
+
+        return CrosshairRayUtility.GetCrosshairRay(out screenPoint);
     }
 
     bool TryResolveDirectRaycast(Ray ray, out WorldPickupItem pickup, out RaycastHit directHit)

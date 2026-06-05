@@ -27,12 +27,15 @@ public static class PlayerRootComponents
         EnsureComponent<PlayerCraftingInteractor>(playerRoot);
         EnsureComponent<PlayerPlacementController>(playerRoot);
         EnsureComponent<PlayerGameplayTargeting>(playerRoot);
+        AimReferenceProvider.EnsureOnPlayer(playerRoot);
+        EnsureComponent<AimReferenceDebug>(playerRoot);
         EnsureComponent<PlayerPickupTargeting>(playerRoot);
         EnsureComponent<PlayerToolSockets>(playerRoot);
         EnsureComponent<PlayerHeldItemController>(playerRoot);
         EnsureComponent<PlayerToolController>(playerRoot);
         EnsureComponent<PlayerWeaponController>(playerRoot);
         EnsureComponent<EnemyCombatTargetingController>(playerRoot);
+        EnsureComponent<MeleeAttackRangeIndicatorController>(playerRoot);
         EnsureComponent<WeaponTargetHighlightController>(playerRoot);
         PlayerMeleeAttackOrigin.EnsureOnPlayer(playerRoot);
         EnsureComponent<ThirdPersonMeleeAlignmentDebug>(playerRoot);

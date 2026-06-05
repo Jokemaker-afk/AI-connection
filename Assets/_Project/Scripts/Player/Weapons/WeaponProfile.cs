@@ -22,6 +22,16 @@ public struct WeaponProfile
     public float FallbackSwingDegrees;
     public float FallbackSwingForward;
     public float FallbackRecoilDistance;
+    public ProjectileKind ProjectileKind;
+    public float ProjectileSpeed;
+    public float ProjectileMaxLifetime;
+    public float ProjectileMaxDistance;
+    public float ProjectileRadius;
+    public bool ProjectileDestroyOnHit;
+    public bool ProjectileCanPierce;
+    public int ProjectileMaxPierceCount;
+    public bool ProjectileUseGravity;
+    public float ProjectileGravityScale;
     public GameObject ProjectilePrefab;
     public GameObject HitEffectPrefab;
     public GameObject MuzzleEffectPrefab;

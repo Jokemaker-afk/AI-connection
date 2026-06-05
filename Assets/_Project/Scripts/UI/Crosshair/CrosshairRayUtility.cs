@@ -2,6 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// Builds world targeting rays from the screen crosshair only — never from mouse pointer.
+/// Prefer <see cref="AimReferenceProvider"/> for aim direction and hit queries.
 /// </summary>
 public static class CrosshairRayUtility
 {

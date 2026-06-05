@@ -62,7 +62,9 @@ public class HandheldWeaponVisual : MonoBehaviour
             StopCoroutine(attackRoutine);
         }
 
-        attackRoutine = StartCoroutine(profile.AttackMode == WeaponAttackMode.Hitscan || profile.IsRanged
+        attackRoutine = StartCoroutine(profile.AttackMode == WeaponAttackMode.Hitscan
+            || profile.AttackMode == WeaponAttackMode.Projectile
+            || profile.IsRanged
             ? ProceduralRecoilRoutine(onComplete)
             : ProceduralSwingRoutine(onComplete));
     }
