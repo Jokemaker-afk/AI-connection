@@ -23,6 +23,12 @@ public static class ModularLevelAssembler
         progression.EnsureCharacterProgressionInitialized(sceneName);
 
         int levelIndex = GameplaySceneCatalog.GetLevelNumber(sceneName);
+        if (levelIndex >= 8 && Level8GenerationFlags.UsesLevel8ChunkLayout)
+        {
+            GameplayCore.Instance?.Log("[ModularLevel] Skipping assembler: Level8 chunk layout builder is active.");
+            return;
+        }
+
         if (levelIndex < 4)
         {
             return;

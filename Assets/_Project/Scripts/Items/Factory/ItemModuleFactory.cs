@@ -17,18 +17,18 @@ public static class ItemModuleFactory
             return null;
         }
 
-        GameObject root;
-        if (data.WorldPickupPrefab != null)
+        var root = new GameObject($"Pickup_{kind}");
+        root.transform.SetParent(parent, false);
+        root.transform.position = position;
+
+        Level8BiomeKind biome = Level8ResourceSpawnContext.CurrentBiome;
+        if (ItemPickupVisualResolver.TryResolve(kind, biome, out GameObject visualPrefab) && visualPrefab != null)
         {
-            root = Object.Instantiate(data.WorldPickupPrefab, position, Quaternion.identity, parent);
-            root.name = $"Pickup_{kind}";
-            LogFallback(kind, "world pickup prefab");
+            Level8ResourceVisualUtility.InstantiatePickupVisual(visualPrefab, root.transform);
+            LogFallback(kind, "world pickup prefab visual");
         }
         else
         {
-            root = new GameObject($"Pickup_{kind}");
-            root.transform.SetParent(parent, false);
-            root.transform.position = position;
             CreateItemVisual(kind, ItemVisualMode.WorldPickup, root.transform);
             LogFallback(kind, "generated world pickup visual");
         }

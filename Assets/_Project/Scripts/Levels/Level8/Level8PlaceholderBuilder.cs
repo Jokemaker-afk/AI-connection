@@ -2,31 +2,36 @@ using UnityEngine;
 
 public static class Level8PlaceholderBuilder
 {
-    const float FloorTop = 0.125f;
+    public static GameObject Generate(bool removeOld = true, int? seedOverride = null)
+    {
+        if (Level8GenerationFlags.UseFixedTestLayout)
+        {
+            return Level8FixedLayoutBuilder.Generate(removeOld);
+        }
 
-    public static GameObject Generate(bool removeOld = true)
+        if (Level8GenerationFlags.UseSeededRandomLayout)
+        {
+            return Level8SeededLayoutBuilder.Generate(removeOld, seedOverride);
+        }
+
+        return GenerateLegacyPlaceholder(removeOld);
+    }
+
+    static GameObject GenerateLegacyPlaceholder(bool removeOld)
     {
         if (removeOld)
         {
-            DestroyIfExists("Level8Arena");
+            Level8MapUtility.DestroyIfExists("Level8Arena");
         }
 
         var root = new GameObject("Level8Arena");
-        var terrain = CreateChild(root.transform, "Terrain");
-        var markers = CreateChild(root.transform, "Markers");
+        var terrain = Level8MapUtility.CreateChild(root.transform, "Terrain");
+        var markers = Level8MapUtility.CreateChild(root.transform, "Markers");
 
-        CreateBlock(terrain, "MainFloor", new Vector3(0f, FloorTop, 0f), new Vector3(24f, 0.25f, 24f), new Color(0.34f, 0.52f, 0.38f));
-        CreateWorldLabel(markers, "WelcomeLabel", new Vector3(0f, FloorTop + 2f, -2f), "第八关占位 · 半随机探索（待实现）");
+        CreateBlock(terrain, "MainFloor", new Vector3(0f, Level8ChunkPlaceholderBuilder.FloorTop, 0f), new Vector3(24f, 0.25f, 24f), new Color(0.34f, 0.52f, 0.38f));
+        Level8MapUtility.CreateWorldLabel(markers, "WelcomeLabel", new Vector3(0f, Level8ChunkPlaceholderBuilder.FloorTop + 2f, -2f), "第八关占位 · 半随机探索（待实现）");
 
         return root;
-    }
-
-    static void CreateWorldLabel(Transform parent, string name, Vector3 position, string text)
-    {
-        var labelRoot = new GameObject(name);
-        labelRoot.transform.SetParent(parent, false);
-        labelRoot.transform.position = position;
-        ItemWorldLabel.Create(labelRoot.transform, text, Vector3.zero, 0.12f);
     }
 
     static GameObject CreateBlock(Transform parent, string blockName, Vector3 position, Vector3 scale, Color color)
@@ -48,21 +53,5 @@ public static class Level8PlaceholderBuilder
 
         cube.AddComponent<StaticPlacementGround>();
         return cube;
-    }
-
-    static Transform CreateChild(Transform parent, string childName)
-    {
-        var go = new GameObject(childName);
-        go.transform.SetParent(parent, false);
-        return go.transform;
-    }
-
-    static void DestroyIfExists(string objectName)
-    {
-        var obj = GameObject.Find(objectName);
-        if (obj != null)
-        {
-            Object.DestroyImmediate(obj);
-        }
     }
 }

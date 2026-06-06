@@ -65,12 +65,42 @@ public class PlayerPickupInteractor : MonoBehaviour
 
     void HandlePickupOrToolKey()
     {
+        if (TryCollectDataCore())
+        {
+            return;
+        }
+
         if (TryPickupCurrentTarget())
         {
             return;
         }
 
         TryUseToolOnCrosshairTarget();
+    }
+
+    bool TryCollectDataCore()
+    {
+        if (targeting == null || !targeting.HasDataCoreCollectible || targeting.DataCoreCollectible == null)
+        {
+            return false;
+        }
+
+        if (targeting.PickupTargeting != null && !targeting.PickupTargeting.CanPickupSelected)
+        {
+            return false;
+        }
+
+        return targeting.DataCoreCollectible.TryCollect();
+    }
+
+    bool TryActivateSignalRelay()
+    {
+        if (targeting == null || !targeting.HasSignalRelay || targeting.SignalRelay == null)
+        {
+            return false;
+        }
+
+        return targeting.SignalRelay.TryActivate();
     }
 
     void TryUseToolOnCrosshairTarget()
@@ -91,6 +121,11 @@ public class PlayerPickupInteractor : MonoBehaviour
 
     void TryInteract()
     {
+        if (TryActivateSignalRelay())
+        {
+            return;
+        }
+
         EnsureCraftingInteractor();
         if (craftingInteractor == null)
         {

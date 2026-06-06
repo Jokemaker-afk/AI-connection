@@ -1070,6 +1070,31 @@ public class PlayerInventoryHud : MonoBehaviour
             gameplayTargeting = FindFirstObjectByType<PlayerGameplayTargeting>();
         }
 
+        if (gameplayTargeting != null && gameplayTargeting.HasDataCoreCollectible)
+        {
+            string prompt = gameplayTargeting.GetWorldPickupPrompt(true);
+            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
+            pickupPromptRoot.gameObject.SetActive(!string.IsNullOrEmpty(prompt));
+            return;
+        }
+
+        if (gameplayTargeting != null && gameplayTargeting.HasSignalRelay)
+        {
+            string prompt = gameplayTargeting.GetSignalRelayPrompt();
+            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
+            pickupPromptRoot.gameObject.SetActive(!string.IsNullOrEmpty(prompt));
+            return;
+        }
+
+        Level8ExitPortal exitPortal = FindFirstObjectByType<Level8ExitPortal>();
+        if (exitPortal != null && IsNearExitPortal(exitPortal))
+        {
+            string exitPrompt = exitPortal.GetProximityPrompt();
+            GameplayChineseText.PrepareUiText(pickupPromptText, exitPrompt);
+            pickupPromptRoot.gameObject.SetActive(!string.IsNullOrEmpty(exitPrompt));
+            return;
+        }
+
         if (gameplayTargeting != null && gameplayTargeting.HasWorldPickup)
         {
             bool canTake = inventory != null
@@ -1207,6 +1232,26 @@ public class PlayerInventoryHud : MonoBehaviour
         }
 
         pickupPromptRoot.gameObject.SetActive(false);
+    }
+
+    static bool IsNearExitPortal(Level8ExitPortal exitPortal)
+    {
+        if (exitPortal == null)
+        {
+            return false;
+        }
+
+        var player = PersistentPlayerRig.Player != null
+            ? PersistentPlayerRig.Player.GetComponent<PlayerController>()
+            : FindFirstObjectByType<PlayerController>();
+        if (player == null)
+        {
+            return false;
+        }
+
+        Vector3 flat = exitPortal.transform.position - player.transform.position;
+        flat.y = 0f;
+        return flat.magnitude <= exitPortal.ActivationRange;
     }
 
     internal void HandleSlotPointerEnter(InventorySlotRegion region, int index)

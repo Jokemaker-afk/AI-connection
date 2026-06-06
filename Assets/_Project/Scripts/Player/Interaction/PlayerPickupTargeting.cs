@@ -59,6 +59,7 @@ public class PlayerPickupTargeting : MonoBehaviour
     PlayerCameraController cameraController;
     Camera viewCamera;
     WorldPickupItem selectedPickup;
+    DataCoreCollectible selectedDataCore;
     WorldPickupItem stickyPickup;
     float stickyUntil;
     PickupResolveSource lastResolveSource = PickupResolveSource.None;
@@ -71,7 +72,9 @@ public class PlayerPickupTargeting : MonoBehaviour
     WorldPickupItem lastVisualTarget;
 
     public WorldPickupItem SelectedPickup => selectedPickup;
-    public bool HasIdentifiedTarget => selectedPickup != null && selectedPickup.CanBePickedUp;
+    public DataCoreCollectible SelectedDataCore => selectedDataCore;
+    public bool HasDataCoreTarget => selectedDataCore != null && selectedDataCore.CanBeCollected;
+    public bool HasIdentifiedTarget => (selectedPickup != null && selectedPickup.CanBePickedUp) || HasDataCoreTarget;
     public bool HasPickupTarget => HasIdentifiedTarget;
     public bool CanPickupSelected => HasIdentifiedTarget && IsWithinPlayerReach;
     public bool IsWithinPlayerReach { get; private set; }
@@ -97,17 +100,26 @@ public class PlayerPickupTargeting : MonoBehaviour
         Vector3 aimDirection = lastCrosshairRay.direction.normalized;
 
         selectedPickup = null;
+        selectedDataCore = null;
         lastResolveSource = PickupResolveSource.None;
         lastHadDirectHit = false;
         lastDirectHitPoint = lastCrosshairRay.origin + aimDirection * maxCameraTargetDistance;
         debugRejectedCandidates.Clear();
 
-        if (TryResolveDirectRaycast(lastCrosshairRay, out WorldPickupItem directPickup, out RaycastHit directHit))
+        if (TryResolveDirectRaycast(lastCrosshairRay, out WorldPickupItem directPickup, out DataCoreCollectible directDataCore, out RaycastHit directHit))
         {
             lastHadDirectHit = true;
             lastDirectHitPoint = directHit.point;
-            CommitSelection(directPickup, PickupResolveSource.DirectRay);
-            DrawDebug(aimDirection, directPickup);
+            if (directPickup != null)
+            {
+                CommitSelection(directPickup, PickupResolveSource.DirectRay);
+            }
+            else
+            {
+                CommitDataCoreSelection(directDataCore, PickupResolveSource.DirectRay);
+            }
+
+            DrawDebug(aimDirection, directPickup, directDataCore);
             return;
         }
 
@@ -118,7 +130,7 @@ public class PlayerPickupTargeting : MonoBehaviour
             {
                 if (ApplyStickiness(spherePickup, aimDirection, PickupResolveSource.SphereCast))
                 {
-                    DrawDebug(aimDirection, selectedPickup);
+                    DrawDebug(aimDirection, selectedPickup, selectedDataCore);
                     return;
                 }
             }
@@ -127,7 +139,7 @@ public class PlayerPickupTargeting : MonoBehaviour
             {
                 if (ApplyStickiness(screenPickup, aimDirection, PickupResolveSource.ScreenAssist))
                 {
-                    DrawDebug(aimDirection, selectedPickup);
+                    DrawDebug(aimDirection, selectedPickup, selectedDataCore);
                     return;
                 }
             }
@@ -136,7 +148,7 @@ public class PlayerPickupTargeting : MonoBehaviour
             {
                 if (ApplyStickiness(groundPickup, aimDirection, PickupResolveSource.GroundAssist))
                 {
-                    DrawDebug(aimDirection, selectedPickup);
+                    DrawDebug(aimDirection, selectedPickup, selectedDataCore);
                     return;
                 }
             }
@@ -145,19 +157,29 @@ public class PlayerPickupTargeting : MonoBehaviour
             {
                 if (ApplyStickiness(conePickup, aimDirection, PickupResolveSource.ConeSearch))
                 {
-                    DrawDebug(aimDirection, selectedPickup);
+                    DrawDebug(aimDirection, selectedPickup, selectedDataCore);
                     return;
                 }
             }
         }
 
         ApplyStickiness(null, aimDirection, PickupResolveSource.None);
-        DrawDebug(aimDirection, null);
+        DrawDebug(aimDirection, null, null);
     }
 
     public string GetPickupPrompt(bool inventoryCanAccept)
     {
-        if (!HasIdentifiedTarget)
+        if (HasDataCoreTarget)
+        {
+            if (!IsWithinPlayerReach)
+            {
+                return showItemNameOutsidePickupRange ? selectedDataCore.DisplayNameChinese : string.Empty;
+            }
+
+            return $"按 F 收集：{selectedDataCore.DisplayNameChinese}";
+        }
+
+        if (!HasIdentifiedTarget || selectedPickup == null)
         {
             return string.Empty;
         }
@@ -181,9 +203,21 @@ public class PlayerPickupTargeting : MonoBehaviour
         return HasIdentifiedTarget ? selectedPickup.DisplayNameChinese : string.Empty;
     }
 
+    void CommitDataCoreSelection(DataCoreCollectible dataCore, PickupResolveSource source)
+    {
+        selectedPickup = null;
+        selectedDataCore = dataCore;
+        stickyPickup = null;
+        stickyUntil = Time.time + targetStickinessTime;
+        lastResolveSource = source;
+        UpdateReachState();
+        LogSelectionIfChanged();
+    }
+
     void CommitSelection(WorldPickupItem pickup, PickupResolveSource source)
     {
         selectedPickup = pickup;
+        selectedDataCore = null;
         stickyPickup = pickup;
         stickyUntil = Time.time + targetStickinessTime;
         lastResolveSource = source;
@@ -228,6 +262,7 @@ public class PlayerPickupTargeting : MonoBehaviour
 
         stickyPickup = null;
         selectedPickup = null;
+        selectedDataCore = null;
         lastResolveSource = PickupResolveSource.None;
         UpdateReachState();
         UpdateTargetVisuals();
@@ -265,9 +300,10 @@ public class PlayerPickupTargeting : MonoBehaviour
         return CrosshairRayUtility.GetCrosshairRay(out screenPoint);
     }
 
-    bool TryResolveDirectRaycast(Ray ray, out WorldPickupItem pickup, out RaycastHit directHit)
+    bool TryResolveDirectRaycast(Ray ray, out WorldPickupItem pickup, out DataCoreCollectible dataCore, out RaycastHit directHit)
     {
         pickup = null;
+        dataCore = null;
         directHit = default;
 
         RaycastHit[] hits = Physics.RaycastAll(
@@ -279,17 +315,34 @@ public class PlayerPickupTargeting : MonoBehaviour
         System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
         for (int i = 0; i < hits.Length; i++)
         {
-            if (!TryGetPickupFromHit(hits[i], out WorldPickupItem candidate))
+            if (TryGetPickupFromHit(hits[i], out WorldPickupItem pickupCandidate))
             {
-                continue;
+                pickup = pickupCandidate;
+                directHit = hits[i];
+                return true;
             }
 
-            pickup = candidate;
-            directHit = hits[i];
-            return true;
+            if (TryGetDataCoreFromHit(hits[i], out DataCoreCollectible coreCandidate))
+            {
+                dataCore = coreCandidate;
+                directHit = hits[i];
+                return true;
+            }
         }
 
         return false;
+    }
+
+    bool TryGetDataCoreFromHit(RaycastHit hit, out DataCoreCollectible dataCore)
+    {
+        dataCore = null;
+        if (hit.collider == null || ShouldIgnoreCollider(hit.collider))
+        {
+            return false;
+        }
+
+        dataCore = hit.collider.GetComponentInParent<DataCoreCollectible>();
+        return dataCore != null && dataCore.CanBeCollected;
     }
 
     bool TryResolveSphereCast(Ray ray, Vector3 aimDirection, float radius, out WorldPickupItem pickup)
@@ -680,7 +733,10 @@ public class PlayerPickupTargeting : MonoBehaviour
             return;
         }
 
-        Vector3 flat = selectedPickup.GetInteractionPoint() - transform.position;
+        Vector3 targetPoint = selectedDataCore != null
+            ? selectedDataCore.GetInteractionPoint()
+            : selectedPickup.GetInteractionPoint();
+        Vector3 flat = targetPoint - transform.position;
         flat.y = 0f;
         IsWithinPlayerReach = flat.magnitude <= playerPickupReach;
     }
@@ -742,7 +798,7 @@ public class PlayerPickupTargeting : MonoBehaviour
             || collider.GetComponentInParent<CharacterController>() != null;
     }
 
-    void DrawDebug(Vector3 aimDirection, WorldPickupItem pickup)
+    void DrawDebug(Vector3 aimDirection, WorldPickupItem pickup, DataCoreCollectible dataCore)
     {
         if (!showCrosshairPickupDebug)
         {
@@ -766,6 +822,13 @@ public class PlayerPickupTargeting : MonoBehaviour
             Vector3 point = pickup.GetInteractionPoint();
             Debug.DrawLine(lastCrosshairRay.origin, point, Color.green, duration, false);
             Debug.DrawRay(point, Vector3.up * 0.5f, Color.green, duration, false);
+        }
+
+        if (dataCore != null)
+        {
+            Vector3 point = dataCore.GetInteractionPoint();
+            Debug.DrawLine(lastCrosshairRay.origin, point, Color.cyan, duration, false);
+            Debug.DrawRay(point, Vector3.up * 0.5f, Color.cyan, duration, false);
         }
 
         for (int i = 0; i < debugRejectedCandidates.Count; i++)
@@ -814,6 +877,7 @@ public class PlayerPickupTargeting : MonoBehaviour
         }
 
         selectedPickup = null;
+        selectedDataCore = null;
         stickyPickup = null;
         stickyUntil = 0f;
         lastLoggedPickup = null;

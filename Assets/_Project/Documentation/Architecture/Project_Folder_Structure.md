@@ -12,8 +12,11 @@ Assets/
 │   ├── Prefabs/
 │   ├── Settings/       # URP / volume profiles
 │   ├── Input/          # Input System actions
+│   ├── Art/                # Imported FBX, materials, placeholders, VFX
+│   ├── Prefabs/            # Environment, props, Level8 modular prefabs
+│   ├── ScriptableObjects/  # Biome / prop set profiles (future SO migration)
 │   ├── Documentation/
-│   └── (Art/, Audio/, ScriptableObjects/ — add when needed)
+│   └── (Audio/ — add when needed)
 ├── ThirdParty/         # Unity template / external packages (e.g. TutorialInfo)
 └── Readme.asset        # Unity template readme (optional cleanup later)
 ```
@@ -63,16 +66,31 @@ Runtime loads scenes **by name** (`SceneManager.LoadScene("Level5")`), not by as
 
 **New script:** place it in the matching folder above. Do not add files to a flat `Scripts/` root.
 
+## Art (`_Project/Art/`)
+
+Environment art pipeline for Level 8 modular maps:
+
+- `Imported/FBX/` — source meshes by biome and category (Environment, Props, Resources, Objectives, Hazards)
+- `Imported/Textures/`, `Imported/Materials/` — URP materials
+- `Placeholder/` — optional primitive stand-ins exported as assets
+- `VFX/` — objective glow, hazard, ambient
+
+See `Documentation/EnvironmentArt/Environment_Asset_Architecture.md`.
+
 ## Prefabs (`_Project/Prefabs/`)
 
-Reserved layout (create subfolders as assets appear):
+- `Environment/` — Chunks, TerrainPatches, WallsAndCliffs, Boundaries, Connectors
+- `Props/` — Decorations (by biome), Resources, Hazards, Objectives
+- `Level8/` — Level-8 curated chunk/objective/resource/hazard prefabs
+- `Shared/` — Labels, interaction markers, VFX
+- `Enemies/` — existing enemy placeholders
+- Future: `Core/`, `Player/`, `Items/`, `UI/`, `Crafting/`, `Building/`
 
-- `Core/` — GameplayCore rig, persistent player
-- `Player/` — visual modules
-- `Items/Pickups/`, `Items/PlacedObjects/`, `Items/HandheldTools/`
-- `UI/`, `Crafting/`, `Building/`, `LevelObjects/`
+Most gameplay objects are still **code-generated** via `ItemModuleFactory`. Environment prefabs register via `Scripts/Levels/Level8/AssetCatalog/` (stubs) or `ItemData` for resources.
 
-Most gameplay objects are still **code-generated** via `ItemModuleFactory`. When adding real prefabs, register paths in `ItemData` / `LevelModuleDefinition`.
+## ScriptableObjects (`_Project/ScriptableObjects/`)
+
+Future home for biome profiles, chunk prefab profiles, prop sets, hazard profiles. Code catalogs in `Level8/AssetCatalog/` until assets exist.
 
 ## Items — where to add content
 
@@ -95,8 +113,10 @@ Level-specific **hand-authored** content: `Levels/LevelN/*PlaceholderBuilder.cs`
 | Subfolder | Contents |
 |-----------|----------|
 | Architecture/ | This file, blueprint, process notes |
+| EnvironmentArt/ | Environment asset architecture, naming, categories |
+| ImportWorkflow/ | FBX → prefab workflow for Level 8 |
 | ItemSystem/ | Item module workflow |
-| LevelDesign/ | Level module workflow |
+| LevelDesign/ | Level module workflow, Level 8 prefab roadmap |
 | Screenshots/ | Dev screenshots |
 
 ## Settings & input

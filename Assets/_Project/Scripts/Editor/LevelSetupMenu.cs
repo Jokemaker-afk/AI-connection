@@ -260,7 +260,8 @@ public static class LevelSetupMenu
             }
         }
 
-        GameplayRigBuilder.EnsureCoreGameplayObjects(new Vector3(0f, 0f, -2f));
+        Vector3 level8Spawn = Level8FixedLayoutBuilder.GetChunkCenter(0, 2) + new Vector3(0f, 0f, -10f);
+        GameplayRigBuilder.EnsureCoreGameplayObjects(level8Spawn);
         Level8PlaceholderBuilder.Generate(true);
 
         EditorSceneManager.SaveScene(scene, Level8ScenePath);

@@ -51,7 +51,10 @@ public static class GameplaySceneCatalog
             case "Level7":
                 return new Vector3(0f, 0f, -2f);
             case "Level8":
-                return new Vector3(0f, 0f, -2f);
+            {
+                Vector3 spawnChunkCenter = Level8MapUtility.GetChunkCenter(0, 2);
+                return Level8MapUtility.GetSpawnPosition(spawnChunkCenter);
+            }
             default:
                 return Vector3.zero;
         }

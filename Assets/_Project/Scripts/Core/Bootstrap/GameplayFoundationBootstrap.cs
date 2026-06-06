@@ -352,10 +352,8 @@ public static class GameplayFoundationBootstrap
 
     static void EnsureLevel8Content()
     {
-        if (GameObject.Find("Level8Arena") == null)
-        {
-            Level8PlaceholderBuilder.Generate(true);
-        }
+        Level8ProgressionBootstrap.EnsureLevel8Progression();
+        Level8PlaceholderBuilder.Generate(true);
     }
 
     static GameObject EnsureRoot(string name)
