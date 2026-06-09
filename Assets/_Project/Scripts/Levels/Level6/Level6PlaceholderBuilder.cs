@@ -115,6 +115,8 @@ public static class Level6PlaceholderBuilder
         PlacePickupCluster(parent, new Vector3(-3.5f, pickupY, -2.5f), ItemKind.Fiber, 6);
         PlacePickupCluster(parent, new Vector3(3.5f, pickupY, -2.5f), ItemKind.Flint, 2);
         PlacePickupCluster(parent, new Vector3(0f, pickupY, -2f), ItemKind.OreFragment, 2);
+        PlacePickupCluster(parent, new Vector3(-4f, pickupY, -3f), ItemKind.Coal, 4);
+        PlacePickupCluster(parent, new Vector3(4f, pickupY, -3f), ItemKind.Berry, 4);
 
         // Near mining area.
         PlacePickupCluster(parent, new Vector3(-12f, pickupY, 1.5f), ItemKind.Stone, 4);
@@ -128,6 +130,8 @@ public static class Level6PlaceholderBuilder
         PlacePickupCluster(parent, new Vector3(2f, pickupY, 9f), ItemKind.OreFragment, 2);
         PlacePickupCluster(parent, new Vector3(-2f, pickupY, 9f), ItemKind.Stone, 2);
         PlacePickupCluster(parent, new Vector3(0f, pickupY, 8.5f), ItemKind.Fiber, 2);
+        PlacePickupCluster(parent, new Vector3(3f, pickupY, 9.5f), ItemKind.Coal, 2);
+        PlacePickupCluster(parent, new Vector3(-3f, pickupY, 9.5f), ItemKind.Berry, 3);
     }
 
     static void PlacePickupCluster(Transform parent, Vector3 center, ItemKind kind, int totalAmount)

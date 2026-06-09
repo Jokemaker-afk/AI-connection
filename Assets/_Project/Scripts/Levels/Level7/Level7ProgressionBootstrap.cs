@@ -73,7 +73,7 @@ public static class Level7ProgressionBootstrap
 
     static void EnsureObjectiveHud(Level7ProgressionManager manager)
     {
-        var hudGo = GameObject.Find("GameplayHUD");
+        var hudGo = RuntimeSingletonCleanup.ResolveSingleGameplayHud();
         if (hudGo == null)
         {
             return;
@@ -86,6 +86,7 @@ public static class Level7ProgressionBootstrap
         }
 
         objectiveHud.BindTo(manager);
+        LevelObjectiveUiRegistry.NotifyProviderBound("Level7", nameof(Level7ProgressionManager));
     }
 
     static void EnsureStarterWeapons()

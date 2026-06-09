@@ -276,6 +276,17 @@ When catalog wiring is enabled (future phases):
 
 ---
 
+## Workstation example: Furnace / 熔炉 (forge.fbx)
+
+- **Source:** external import `Assets/_Project/Art/Imported/FBX/SceneModules/Buildables/forge.fbx`
+- **Prefab:** `Assets/_Project/Prefabs/SceneModules/Stations/PF_Generic_Workstation_Furnace_01.prefab`
+- **Gameplay:** root hosts `CraftingStation`, `PlacedBuilding`, `PlacedPickupable`, `BoxCollider`; FBX is visual-only under `Visual/AxisCorrection/forge`
+- **Materials:** centralized URP Lit in `Materials/Workstations/Furnace/` remapped from FBX slots `stone` / `metal`
+- **Re-integrate:** `Tools → Items → Replace Furnace Visual With Imported forge.fbx`
+- **Fallback:** missing registry/prefab → primitive placed visual; Furnace recipes and `WorkstationKind.Furnace` unchanged
+
+---
+
 ## Related documents
 
 - [Environment Asset Architecture](../EnvironmentArt/Environment_Asset_Architecture.md)

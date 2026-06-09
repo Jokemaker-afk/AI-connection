@@ -311,6 +311,7 @@ public class PlayerCameraController : MonoBehaviour
         thirdPersonDistanceCurrent = thirdPersonCameraDistance;
         ApplyPlayerVisibility();
         UpdateCursorLock(true);
+        GameplayCrosshairController.EnsureCrosshairForPlayer();
     }
 
     void HandleMouseLook()

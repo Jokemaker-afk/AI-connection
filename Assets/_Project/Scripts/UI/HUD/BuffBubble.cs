@@ -3,6 +3,10 @@ using UnityEngine;
 [RequireComponent(typeof(SphereCollider))]
 public class BuffBubble : MonoBehaviour
 {
+    const string VisualRootName = "VisualRoot";
+    const string LabelAnchorName = "LabelAnchor";
+    const string InteractionPointName = "InteractionPoint";
+
     [SerializeField] BuffType buffType = BuffType.Heal;
     [SerializeField] bool oneShot = true;
     [SerializeField] float bobAmplitude = 0.18f;
@@ -10,15 +14,18 @@ public class BuffBubble : MonoBehaviour
     [SerializeField] float spinSpeed = 45f;
 
     bool collected;
+    bool moduleVisualBuilt;
     Vector3 basePosition;
 
     void Awake()
     {
-        var sphere = GetComponent<SphereCollider>();
-        sphere.isTrigger = true;
-        sphere.radius = 1.1f;
-        sphere.center = Vector3.zero;
+        SetupCollider();
         basePosition = transform.position;
+    }
+
+    void Start()
+    {
+        EnsureModuleVisual();
     }
 
     void Update()
@@ -84,13 +91,123 @@ public class BuffBubble : MonoBehaviour
         root.transform.SetParent(parent, false);
         root.transform.position = position;
 
+        var bubble = root.AddComponent<BuffBubble>();
+        bubble.Initialize(type);
+        return bubble;
+    }
+
+    public void Initialize(BuffType type)
+    {
+        buffType = type;
+        basePosition = transform.position;
+        EnsureModuleVisual();
+    }
+
+    void EnsureModuleVisual()
+    {
+        if (moduleVisualBuilt)
+        {
+            return;
+        }
+
+        MigrateLegacyVisualChildren();
+        EnsureLabelAnchor();
+        EnsureInteractionPoint();
+        BuildModuleVisual();
+    }
+
+    void MigrateLegacyVisualChildren()
+    {
+        if (transform.Find(VisualRootName) != null)
+        {
+            return;
+        }
+
+        DestroyLegacyChild("BubbleShell");
+        DestroyLegacyChild("BubbleCore");
+        DestroyLegacyChild("BubbleRing");
+    }
+
+    void DestroyLegacyChild(string childName)
+    {
+        Transform legacy = transform.Find(childName);
+        if (legacy != null && legacy.parent == transform)
+        {
+            Destroy(legacy.gameObject);
+        }
+    }
+
+    void BuildModuleVisual()
+    {
+        Transform visualRoot = EnsureVisualRootTransform();
+        SceneModuleVisualUtility.ClearVisualChildren(visualRoot);
+
+        SceneModuleKind? moduleKind = BuffStationPrefabCatalog.MapBuffTypeToModuleKind(buffType);
+        if (moduleKind.HasValue
+            && SceneModuleVisualResolver.TryResolveSceneModulePrefab(moduleKind.Value, out GameObject prefab)
+            && prefab != null)
+        {
+            SceneModuleVisualUtility.InstantiateModuleVisual(prefab, visualRoot);
+        }
+        else
+        {
+            BuildPrimitiveBuffStationVisuals(visualRoot, buffType);
+        }
+
+        moduleVisualBuilt = true;
+    }
+
+    Transform EnsureVisualRootTransform()
+    {
+        Transform visualRoot = transform.Find(VisualRootName);
+        if (visualRoot != null)
+        {
+            return visualRoot;
+        }
+
+        var visualRootGo = new GameObject(VisualRootName);
+        visualRootGo.transform.SetParent(transform, false);
+        visualRootGo.transform.localPosition = Vector3.zero;
+        visualRootGo.transform.localRotation = Quaternion.identity;
+        visualRootGo.transform.localScale = Vector3.one;
+        return visualRootGo.transform;
+    }
+
+    void EnsureLabelAnchor()
+    {
+        Transform labelAnchor = transform.Find(LabelAnchorName);
+        if (labelAnchor != null)
+        {
+            return;
+        }
+
+        var labelGo = new GameObject(LabelAnchorName);
+        labelGo.transform.SetParent(transform, false);
+        labelGo.transform.localPosition = new Vector3(0f, 1.8f, 0f);
+    }
+
+    void EnsureInteractionPoint()
+    {
+        Transform interactionPoint = transform.Find(InteractionPointName);
+        if (interactionPoint != null)
+        {
+            return;
+        }
+
+        var pointGo = new GameObject(InteractionPointName);
+        pointGo.transform.SetParent(transform, false);
+        pointGo.transform.localPosition = new Vector3(0f, 0.8f, 0f);
+    }
+
+    static void BuildPrimitiveBuffStationVisuals(Transform visualRoot, BuffType type)
+    {
         var outer = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         outer.name = "BubbleShell";
-        outer.transform.SetParent(root.transform, false);
+        outer.transform.SetParent(visualRoot, false);
         outer.transform.localPosition = Vector3.zero;
         outer.transform.localScale = Vector3.one * 1.6f;
         outer.isStatic = true;
-        Object.DestroyImmediate(outer.GetComponent<Collider>());
+        Object.Destroy(outer.GetComponent<Collider>());
 
         var shellRenderer = outer.GetComponent<Renderer>();
         if (shellRenderer != null)
@@ -108,11 +225,11 @@ public class BuffBubble : MonoBehaviour
 
         var core = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         core.name = "BubbleCore";
-        core.transform.SetParent(root.transform, false);
+        core.transform.SetParent(visualRoot, false);
         core.transform.localPosition = Vector3.zero;
         core.transform.localScale = Vector3.one * 0.55f;
         core.isStatic = true;
-        Object.DestroyImmediate(core.GetComponent<Collider>());
+        Object.Destroy(core.GetComponent<Collider>());
 
         var coreRenderer = core.GetComponent<Renderer>();
         if (coreRenderer != null)
@@ -127,11 +244,11 @@ public class BuffBubble : MonoBehaviour
 
         var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         ring.name = "BubbleRing";
-        ring.transform.SetParent(root.transform, false);
+        ring.transform.SetParent(visualRoot, false);
         ring.transform.localPosition = Vector3.zero;
         ring.transform.localScale = new Vector3(1.1f, 0.02f, 1.1f);
         ring.isStatic = true;
-        Object.DestroyImmediate(ring.GetComponent<Collider>());
+        Object.Destroy(ring.GetComponent<Collider>());
 
         var ringRenderer = ring.GetComponent<Renderer>();
         if (ringRenderer != null)
@@ -140,16 +257,14 @@ public class BuffBubble : MonoBehaviour
             ringMat.color = new Color(1f, 1f, 1f, 0.55f);
             ringRenderer.sharedMaterial = ringMat;
         }
-
-        var bubble = root.AddComponent<BuffBubble>();
-        bubble.Initialize(type);
-        return bubble;
     }
 
-    public void Initialize(BuffType type)
+    void SetupCollider()
     {
-        buffType = type;
-        basePosition = transform.position;
+        var sphere = GetComponent<SphereCollider>();
+        sphere.isTrigger = true;
+        sphere.radius = 1.1f;
+        sphere.center = Vector3.zero;
     }
 
     static Color GetBubbleColor(BuffType type)

@@ -45,11 +45,11 @@ public static class ParkourLevelBuilder
         float climbTop = PlatformTop(FloorTop + 1.05f);
         float finalTop = PlatformTop(FloorTop + 2.05f);
 
-        LaserHazard.Create(lasers, "Laser_BeamSection", new Vector3(0f, beamTop + LaserHeightAboveFloor, 31f), new Vector3(0.15f, 0.12f, 8f));
-        LaserHazard.Create(lasers, "Laser_ClimbGate", new Vector3(0f, climbTop + 0.75f + LaserHeightAboveFloor, 52.5f), new Vector3(5f, 0.12f, 0.35f));
+        ElectricFieldHazardFactory.CreateElectricField(lasers, "Laser_BeamSection", new Vector3(0f, beamTop + LaserHeightAboveFloor, 31f), new Vector3(0.15f, 0.12f, 8f));
+        ElectricFieldHazardFactory.CreateElectricField(lasers, "Laser_ClimbGate", new Vector3(0f, climbTop + 0.75f + LaserHeightAboveFloor, 52.5f), new Vector3(5f, 0.12f, 0.35f));
 
-        SpikeTrap.Create(spikes, "Spikes_Rest", new Vector3(2.5f, restTop, 43f), new Vector3(2f, 0.4f, 2f), 3);
-        SpikeTrap.Create(spikes, "Spikes_Final", new Vector3(-2f, finalTop, 68f), new Vector3(2.4f, 0.4f, 1.4f), 4);
+        SpikeTrapHazardFactory.CreateSpikeHazard(spikes, "Spikes_Rest", new Vector3(2.5f, restTop, 43f), new Vector3(2f, 0.4f, 2f), 3);
+        SpikeTrapHazardFactory.CreateSpikeHazard(spikes, "Spikes_Final", new Vector3(-2f, finalTop, 68f), new Vector3(2.4f, 0.4f, 1.4f), 4);
 
         RewardCrate.Create(markersRoot, "Bonus_Crate", new Vector3(2.8f, FloorTop + 2.55f, 36f), RewardTier.Silver);
         RewardCrate.Create(markersRoot, "Bonus_Crate_2", new Vector3(-2.5f, FloorTop + 2.55f, 60f), RewardTier.Gold);

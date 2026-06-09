@@ -79,7 +79,7 @@ public static class Level5ProgressionBootstrap
 
     static void EnsureObjectiveHud(SceneProgressionManager manager)
     {
-        var hudGo = GameObject.Find("GameplayHUD");
+        var hudGo = RuntimeSingletonCleanup.ResolveSingleGameplayHud();
         if (hudGo == null)
         {
             return;
@@ -92,6 +92,7 @@ public static class Level5ProgressionBootstrap
         }
 
         objectiveHud.BindTo(manager);
+        LevelObjectiveUiRegistry.NotifyProviderBound("Level5", nameof(SceneProgressionManager));
     }
 
     static void UpdateWorldHints()

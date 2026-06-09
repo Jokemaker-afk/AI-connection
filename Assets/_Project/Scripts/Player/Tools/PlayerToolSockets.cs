@@ -13,7 +13,7 @@ public class PlayerToolSockets : MonoBehaviour
 
     [Header("Third Person Tool Socket")]
     [SerializeField] Transform thirdPersonToolSocket;
-    [SerializeField] Vector3 thirdPersonToolPositionOffset = Vector3.zero;
+    [SerializeField] Vector3 thirdPersonToolPositionOffset = new Vector3(0.48f, 0.10f, 0.10f);
     [SerializeField] Vector3 thirdPersonToolRotationOffset = Vector3.zero;
     [SerializeField] Vector3 thirdPersonToolScale = Vector3.one;
 
@@ -149,7 +149,7 @@ public class PlayerToolSockets : MonoBehaviour
             thirdPersonToolSocket = CreateFallbackSocket(
                 handParent,
                 PlayerVisualBuilder.ThirdPersonToolSocketName,
-                new Vector3(0.48f, 0.02f, 0.12f));
+                new Vector3(0.48f, 0.10f, 0.10f));
         }
 
         if (firstPersonToolSocket == null)

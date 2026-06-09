@@ -9,11 +9,21 @@ public static class Level5PlaceholderBuilder
     {
         ItemKind.Wood,
         ItemKind.Stone,
-        ItemKind.Grass,
         ItemKind.Fiber,
+        ItemKind.OreFragment,
+        ItemKind.Coal,
+        ItemKind.Berry,
+        ItemKind.Grass,
         ItemKind.Vine,
         ItemKind.Flint,
         ItemKind.Clay,
+    };
+
+    static readonly ItemKind[] SharedResourceKinds =
+    {
+        ItemKind.Wood,
+        ItemKind.Stone,
+        ItemKind.Fiber,
         ItemKind.OreFragment,
         ItemKind.Coal,
         ItemKind.Berry,
@@ -44,6 +54,7 @@ public static class Level5PlaceholderBuilder
         CreateBlock(terrain, "RockB", new Vector3(10f, FloorTop + 0.35f, -5f), new Vector3(1.4f, 0.7f, 2.2f), rockColor * 0.95f);
 
         ScatterBasicMaterials(pickups);
+        PlaceSharedResourceShowcase(pickups);
         PlaceMaterialRing(pickups, new Vector3(-10f, FloorTop + 0.65f, 8f), 3.5f);
         PlaceMaterialRing(pickups, new Vector3(12f, FloorTop + 0.65f, -8f), 3.2f);
 
@@ -63,6 +74,20 @@ public static class Level5PlaceholderBuilder
         }
 
         return root;
+    }
+
+    static void PlaceSharedResourceShowcase(Transform parent)
+    {
+        float pickupY = FloorTop + 0.65f;
+        Vector3 center = new Vector3(0f, pickupY, 4f);
+        const float radius = 3.5f;
+
+        for (int i = 0; i < SharedResourceKinds.Length; i++)
+        {
+            float angle = i * Mathf.PI * 2f / SharedResourceKinds.Length;
+            Vector3 pos = center + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+            ItemModuleFactory.SpawnWorldPickup(SharedResourceKinds[i], pos, 2, parent);
+        }
     }
 
     static void ScatterBasicMaterials(Transform parent)

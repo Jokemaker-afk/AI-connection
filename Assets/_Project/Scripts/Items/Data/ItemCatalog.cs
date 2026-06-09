@@ -220,7 +220,21 @@ public static class ItemCatalog
     static void RegisterToolsAndWeapons()
     {
         RegisterHandheldTool(ItemKind.StonePickaxe, "石镐", ToolKind.Pickaxe, new Color(0.55f, 0.58f, 0.64f), descriptionChinese: "石镐，用于采矿。");
-        RegisterHandheldTool(ItemKind.StoneAxe, "石斧", ToolKind.Axe, new Color(0.62f, 0.62f, 0.66f), useCooldown: 0.42f, descriptionChinese: "石斧，用于伐木。");
+        Register(
+            ItemKind.StoneAxe,
+            "石斧",
+            ItemCategory.Tool,
+            new Color(0.62f, 0.62f, 0.66f),
+            stackable: false,
+            maxStack: 1,
+            descriptionChinese: "石斧，用于伐木。",
+            recoverable: false,
+            craftable: true,
+            handheldTool: CreateDefaultToolProfile(
+                ToolKind.Axe,
+                0.42f,
+                thirdPersonPosition: new Vector3(0.08f, -0.02f, 0.02f),
+                thirdPersonEuler: new Vector3(0f, 90f, 90f)));
         RegisterHandheldTool(ItemKind.RepairTool, "修理工具", ToolKind.RepairTool, new Color(0.72f, 0.68f, 0.42f), useCooldown: 0.5f, descriptionChinese: "修理工具，用于修复中继器。");
         RegisterHandheldTool(ItemKind.BasicKnife, "简易小刀", ToolKind.Knife, new Color(0.68f, 0.72f, 0.78f), useCooldown: 0.35f, descriptionChinese: "简易小刀，可用于切割与近战。");
         RegisterHandheldTool(ItemKind.Hammer, "锤子", ToolKind.Hammer, new Color(0.58f, 0.52f, 0.48f), useCooldown: 0.48f, descriptionChinese: "锤子，可用于建造与敲击。");
@@ -405,7 +419,7 @@ public static class ItemCatalog
             recoverable: true,
             craftable: true,
             requiredWorkstation: WorkstationKind.None,
-            placedBoundsSize: new Vector3(1.6f, 0.9f, 1.2f));
+            placedBoundsSize: new Vector3(2.0f, 1.0f, 1.0f));
 
         Register(
             ItemKind.Campfire,

@@ -75,7 +75,7 @@ public static class Level6ProgressionBootstrap
 
     static void EnsureObjectiveHud(Level6ProgressionManager manager)
     {
-        var hudGo = GameObject.Find("GameplayHUD");
+        var hudGo = RuntimeSingletonCleanup.ResolveSingleGameplayHud();
         if (hudGo == null)
         {
             return;
@@ -88,6 +88,7 @@ public static class Level6ProgressionBootstrap
         }
 
         objectiveHud.BindTo(manager);
+        LevelObjectiveUiRegistry.NotifyProviderBound("Level6", nameof(Level6ProgressionManager));
     }
 
     static void EnsureGameEventListener(GameObject systemsGo)

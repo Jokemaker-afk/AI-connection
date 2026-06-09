@@ -53,7 +53,7 @@ public static class Level8ProgressionBootstrap
 
     static void EnsureObjectiveHud()
     {
-        var hudGo = GameObject.Find("GameplayHUD");
+        var hudGo = RuntimeSingletonCleanup.ResolveSingleGameplayHud();
         if (hudGo == null)
         {
             return;
@@ -63,5 +63,7 @@ public static class Level8ProgressionBootstrap
         {
             hudGo.AddComponent<Level8ProgressionHud>();
         }
+
+        LevelObjectiveUiRegistry.NotifyProviderBound("Level8", nameof(Level8ObjectiveTracker));
     }
 }

@@ -271,7 +271,7 @@ public static class PlayerVisualBuilder
             handSocket.SetParent(modelContent, false);
         }
 
-        handSocket.localPosition = new Vector3(0.48f, 0.02f, 0.12f);
+        handSocket.localPosition = new Vector3(0.48f, 0.10f, 0.10f);
         handSocket.localRotation = Quaternion.identity;
         handSocket.localScale = Vector3.one;
     }

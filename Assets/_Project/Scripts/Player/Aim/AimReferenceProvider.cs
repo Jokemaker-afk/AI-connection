@@ -21,6 +21,7 @@ public class AimReferenceProvider : MonoBehaviour
     Vector3 lastValidFlatAim = Vector3.forward;
     bool worldAimingBlocked;
     bool loggedRayOrigin;
+    RectTransform boundCrosshairRect;
 
     public static AimReferenceProvider Instance => instance;
 
@@ -31,6 +32,12 @@ public class AimReferenceProvider : MonoBehaviour
     public Vector3 FlatAimDirection => flatAimDirection;
     public Vector3 FlatAimRight => flatAimRight;
     public bool ShowAimReferenceDebug => showAimReferenceDebug;
+    public RectTransform BoundCrosshairRect => boundCrosshairRect;
+
+    public void BindCrosshairRect(RectTransform crosshairRect)
+    {
+        boundCrosshairRect = crosshairRect;
+    }
 
     public static AimReferenceProvider EnsureOnPlayer(GameObject playerRoot)
     {

@@ -54,6 +54,7 @@ public static class PlayerSetupDiagnostics
         typeof(PlayerStats),
         typeof(PlayerInventory),
         typeof(PlayerPickupInteractor),
+        typeof(PlayerCraftingAbility),
         typeof(PlayerCraftingInteractor),
         typeof(PlayerPlacementController),
         typeof(PlayerGameplayTargeting),

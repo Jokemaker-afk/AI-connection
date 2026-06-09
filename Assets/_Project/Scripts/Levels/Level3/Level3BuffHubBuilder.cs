@@ -146,7 +146,7 @@ public static class Level3BuffHubBuilder
             Vector3 trapSize = alongX
                 ? new Vector3(2f, 0.4f, PathWidth * 0.7f)
                 : new Vector3(PathWidth * 0.7f, 0.4f, 2f);
-            SpikeTrap.Create(hazards, $"Trap_{label}", trapPos, trapSize, 4, 22f);
+            SpikeTrapHazardFactory.CreateSpikeHazard(hazards, $"Trap_{label}", trapPos, trapSize, 4, 22f);
         }
 
         Vector3 endPos = direction.normalized * (HubSize * 0.5f + PathLength - 1.5f);

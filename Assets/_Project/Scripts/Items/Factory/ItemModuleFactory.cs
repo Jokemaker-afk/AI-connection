@@ -17,14 +17,24 @@ public static class ItemModuleFactory
             return null;
         }
 
+        Level8BiomeKind biome = Level8ResourceSpawnContext.CurrentBiome;
+        if (ItemPickupVisualResolver.TryResolve(kind, biome, out GameObject resolvedPrefab) && resolvedPrefab != null
+            && WorldPickupPrefabUtility.IsCompleteWorldPickupPrefab(resolvedPrefab))
+        {
+            GameObject completeRoot = Object.Instantiate(resolvedPrefab, position, Quaternion.identity, parent);
+            completeRoot.name = $"Pickup_{kind}";
+            ConfigureWorldPickup(completeRoot, kind, amount);
+            LogFallback(kind, "complete world pickup prefab");
+            return completeRoot;
+        }
+
         var root = new GameObject($"Pickup_{kind}");
         root.transform.SetParent(parent, false);
         root.transform.position = position;
 
-        Level8BiomeKind biome = Level8ResourceSpawnContext.CurrentBiome;
-        if (ItemPickupVisualResolver.TryResolve(kind, biome, out GameObject visualPrefab) && visualPrefab != null)
+        if (resolvedPrefab != null)
         {
-            Level8ResourceVisualUtility.InstantiatePickupVisual(visualPrefab, root.transform);
+            Level8ResourceVisualUtility.InstantiatePickupVisual(resolvedPrefab, root.transform);
             LogFallback(kind, "world pickup prefab visual");
         }
         else
@@ -51,9 +61,15 @@ public static class ItemModuleFactory
         }
 
         GameObject root;
-        if (data.PlacedPrefab != null)
+        GameObject placedPrefab = data.PlacedPrefab;
+        if (placedPrefab == null && ItemPlacedPrefabResolver.TryResolve(kind, out GameObject resolvedPlacedPrefab))
         {
-            root = Object.Instantiate(data.PlacedPrefab, position, rotation, parent);
+            placedPrefab = resolvedPlacedPrefab;
+        }
+
+        if (placedPrefab != null)
+        {
+            root = Object.Instantiate(placedPrefab, position, rotation, parent);
             root.name = $"Placed_{kind}";
             EnsurePlacedComponents(root, kind, data);
             LogFallback(kind, "placed prefab");
@@ -88,7 +104,7 @@ public static class ItemModuleFactory
         GameObject instance;
         if (data.HandheldTool.HandheldPrefab != null)
         {
-            instance = Object.Instantiate(data.HandheldTool.HandheldPrefab, socket);
+            instance = Object.Instantiate(data.HandheldTool.HandheldPrefab, socket, false);
             LogFallback(kind, "handheld prefab");
         }
         else
@@ -99,7 +115,7 @@ public static class ItemModuleFactory
                 return null;
             }
 
-            instance = Object.Instantiate(template, socket);
+            instance = Object.Instantiate(template, socket, false);
             LogFallback(kind, "generated handheld prototype");
         }
 

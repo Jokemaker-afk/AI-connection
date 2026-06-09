@@ -17,6 +17,11 @@ public class PlacedObjectHighlighter : MonoBehaviour
 
     public void RefreshFromColliders()
     {
+        RefreshFromVisualBounds();
+    }
+
+    public void RefreshFromVisualBounds()
+    {
         if (outlineRoot == null)
         {
             BuildOutline();
@@ -87,6 +92,18 @@ public class PlacedObjectHighlighter : MonoBehaviour
 
     Bounds ComputeLocalBounds()
     {
+        PlacedObjectColliderFitter fitter = GetComponent<PlacedObjectColliderFitter>();
+        if (fitter != null)
+        {
+            return fitter.CalculateVisualBounds();
+        }
+
+        Transform visualRoot = PlacedObjectBoundsUtility.ResolveVisualRoot(transform);
+        if (PlacedObjectBoundsUtility.TryCalculateLocalRendererBounds(transform, visualRoot, out Bounds visualBounds))
+        {
+            return visualBounds;
+        }
+
         BoxCollider box = GetComponent<BoxCollider>();
         if (box != null)
         {

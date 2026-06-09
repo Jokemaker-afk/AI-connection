@@ -58,4 +58,10 @@ public class Level7TaskProgressTracker : MonoBehaviour, ISceneTaskTracker
         OnTaskCompleted?.Invoke(taskId);
         OnProgressChanged?.Invoke();
     }
+
+    public void ResetForSceneEntry()
+    {
+        completedTasks.Clear();
+        OnProgressChanged?.Invoke();
+    }
 }

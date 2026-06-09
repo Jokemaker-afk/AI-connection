@@ -74,7 +74,8 @@ public static class GameplaySceneCatalog
 
         GameplayAbility abilities = GameplayAbility.Hud
             | GameplayAbility.HealthStamina
-            | GameplayAbility.SceneProgression;
+            | GameplayAbility.SceneProgression
+            | GameplayAbility.CrosshairTargeting;
 
         if (level >= 2)
         {
@@ -85,8 +86,7 @@ public static class GameplaySceneCatalog
         {
             abilities |= GameplayAbility.InventoryBackpack
                 | GameplayAbility.ItemPickup
-                | GameplayAbility.ItemTooltip
-                | GameplayAbility.CrosshairTargeting;
+                | GameplayAbility.ItemTooltip;
         }
 
         if (level >= 5)

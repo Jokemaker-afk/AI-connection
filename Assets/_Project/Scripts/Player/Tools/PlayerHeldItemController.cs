@@ -155,6 +155,11 @@ public class PlayerHeldItemController : MonoBehaviour
 
         if (ItemKindUtility.IsHandheldTool(itemKind))
         {
+            if (ItemCatalog.TryGet(itemKind, out ItemData toolData))
+            {
+                ApplyToolTransform(activeHeldInstance.transform, toolData.HandheldTool, firstPerson);
+            }
+
             ConfigureToolLabel(activeHeldInstance.transform, firstPerson);
         }
         else if (ItemKindUtility.IsWeapon(itemKind))

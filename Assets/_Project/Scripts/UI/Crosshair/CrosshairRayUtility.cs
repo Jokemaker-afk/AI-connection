@@ -49,9 +49,20 @@ public static class CrosshairRayUtility
     static bool TryGetCrosshairRectScreenPoint(Camera worldCamera, out Vector2 screenPoint)
     {
         screenPoint = default;
-        var crosshairHud = Object.FindFirstObjectByType<GameplayCrosshairHud>();
-        RectTransform crosshairRect = crosshairHud != null ? crosshairHud.CrosshairRectTransform : null;
+
+        RectTransform crosshairRect = null;
+        if (AimReferenceProvider.Instance != null)
+        {
+            crosshairRect = AimReferenceProvider.Instance.BoundCrosshairRect;
+        }
+
         if (crosshairRect == null)
+        {
+            var crosshairHud = Object.FindFirstObjectByType<GameplayCrosshairHud>();
+            crosshairRect = crosshairHud != null ? crosshairHud.CrosshairRectTransform : null;
+        }
+
+        if (crosshairRect == null || !crosshairRect.gameObject.activeInHierarchy)
         {
             return false;
         }

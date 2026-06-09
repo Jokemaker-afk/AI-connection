@@ -142,7 +142,7 @@ public static class GameplayElementsBuilder
         }
 
         var position = new Vector3(xzPosition.x, groundY + size.y * 0.5f, xzPosition.z);
-        LaserHazard.Create(parent, name, position, size);
+        ElectricFieldHazardFactory.CreateElectricField(parent, name, position, size);
     }
 
     static void PlaceSpikes(Transform parent, int floorNumber, string name, Vector3 xzPosition, Vector3 size, int spikeCount)
@@ -158,7 +158,7 @@ public static class GameplayElementsBuilder
         }
 
         var position = new Vector3(xzPosition.x, groundY, xzPosition.z);
-        SpikeTrap.Create(parent, name, position, size, spikeCount);
+        SpikeTrapHazardFactory.CreateSpikeHazard(parent, name, position, size, spikeCount);
     }
 
     static int ParseFloorNumber(string objectName)

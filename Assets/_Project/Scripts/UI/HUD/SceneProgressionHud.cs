@@ -1,12 +1,14 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class SceneProgressionHud : MonoBehaviour
+public class SceneProgressionHud : MonoBehaviour, ILevelObjectiveHudPanel
 {
     [SerializeField] SceneProgressionManager progressionManager;
 
     RectTransform panelRoot;
     Text objectiveText;
+
+    public int ObjectiveLevel => 5;
 
     void Awake()
     {
@@ -31,6 +33,26 @@ public class SceneProgressionHud : MonoBehaviour
         Unsubscribe();
         progressionManager = manager;
         Subscribe();
+        RefreshObjectiveDisplay();
+    }
+
+    public void ResetForSceneTransition()
+    {
+        Unsubscribe();
+        progressionManager = null;
+        if (objectiveText != null)
+        {
+            GameplayChineseText.PrepareUiText(objectiveText, string.Empty);
+        }
+
+        if (panelRoot != null)
+        {
+            panelRoot.gameObject.SetActive(false);
+        }
+    }
+
+    public void RefreshObjectiveDisplay()
+    {
         RefreshObjective();
     }
 

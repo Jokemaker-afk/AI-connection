@@ -1,13 +1,15 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class Level6ProgressionHud : MonoBehaviour
+public class Level6ProgressionHud : MonoBehaviour, ILevelObjectiveHudPanel
 {
     [SerializeField] Level6ProgressionManager progressionManager;
 
     RectTransform panelRoot;
     Text objectiveText;
     PlayerInventory trackedInventory;
+
+    public int ObjectiveLevel => 6;
 
     void Awake()
     {
@@ -33,6 +35,27 @@ public class Level6ProgressionHud : MonoBehaviour
         Unsubscribe();
         progressionManager = manager;
         Subscribe();
+        RefreshObjectiveDisplay();
+    }
+
+    public void ResetForSceneTransition()
+    {
+        Unsubscribe();
+        UnsubscribeInventory();
+        progressionManager = null;
+        if (objectiveText != null)
+        {
+            GameplayChineseText.PrepareUiText(objectiveText, string.Empty);
+        }
+
+        if (panelRoot != null)
+        {
+            panelRoot.gameObject.SetActive(false);
+        }
+    }
+
+    public void RefreshObjectiveDisplay()
+    {
         RefreshObjective();
     }
 

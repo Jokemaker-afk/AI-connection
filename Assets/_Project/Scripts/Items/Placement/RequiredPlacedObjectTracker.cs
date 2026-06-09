@@ -47,4 +47,9 @@ public class RequiredPlacedObjectTracker : MonoBehaviour
         OnItemPlacedOnce?.Invoke(itemKind);
         OnProgressChanged?.Invoke();
     }
+
+    public void ResetForSceneTransition()
+    {
+        placedOnce.Clear();
+    }
 }

@@ -18,14 +18,15 @@ public static class PickupItemInteractionSetup
             return;
         }
 
-        var pickup = root.GetComponent<WorldPickupItem>();
+        GameObject logicHost = WorldPickupPrefabUtility.ResolveLogicHost(root);
+        var pickup = logicHost.GetComponent<WorldPickupItem>();
         if (pickup == null)
         {
-            pickup = root.AddComponent<WorldPickupItem>();
+            pickup = logicHost.AddComponent<WorldPickupItem>();
         }
 
         pickup.Configure(kind, amount);
-        EnsureColliders(root, pickup);
+        EnsureColliders(logicHost, pickup);
         GameplayLayers.TrySetPickupLayer(root);
 
         if (logSpawn)

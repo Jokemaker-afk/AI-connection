@@ -19,9 +19,19 @@ public static class ItemVisualBuilder
 
     public static GameObject CreatePlacedVisual(Transform parent, ItemKind kind, Vector3 scale, Vector3 localOffset)
     {
-        if (ItemCatalog.TryGet(kind, out ItemData data) && data.PlacedPrefab != null)
+        GameObject placedPrefab = null;
+        if (ItemCatalog.TryGet(kind, out ItemData data))
         {
-            var instance = Object.Instantiate(data.PlacedPrefab, parent);
+            placedPrefab = data.PlacedPrefab;
+            if (placedPrefab == null)
+            {
+                ItemPlacedPrefabResolver.TryResolve(kind, out placedPrefab);
+            }
+        }
+
+        if (placedPrefab != null)
+        {
+            var instance = Object.Instantiate(placedPrefab, parent);
             instance.name = "Visual";
             instance.transform.localPosition = localOffset;
             instance.transform.localRotation = Quaternion.identity;
@@ -30,7 +40,12 @@ public static class ItemVisualBuilder
             return instance;
         }
 
-        return CreateCubeVisual(parent, "Visual", data.IsValid ? data.DisplayColor : Color.gray, scale, localOffset);
+        if (ItemCatalog.TryGet(kind, out data))
+        {
+            return CreateCubeVisual(parent, "Visual", data.IsValid ? data.DisplayColor : Color.gray, scale, localOffset);
+        }
+
+        return CreateCubeVisual(parent, "Visual", Color.gray, scale, localOffset);
     }
 
     public static GameObject CreateHeldPlaceableVisual(Transform parent, ItemKind kind, Vector3 localScale)
@@ -43,6 +58,17 @@ public static class ItemVisualBuilder
         if (data.PlacedPrefab != null)
         {
             var instance = Object.Instantiate(data.PlacedPrefab, parent);
+            instance.name = "Visual";
+            instance.transform.localPosition = Vector3.zero;
+            instance.transform.localRotation = Quaternion.identity;
+            instance.transform.localScale = localScale;
+            ItemModuleFactory.StripPlacedGameplayComponents(instance);
+            return instance;
+        }
+
+        if (ItemPlacedPrefabResolver.TryResolve(kind, out GameObject resolvedPlacedPrefab))
+        {
+            var instance = Object.Instantiate(resolvedPlacedPrefab, parent);
             instance.name = "Visual";
             instance.transform.localPosition = Vector3.zero;
             instance.transform.localRotation = Quaternion.identity;

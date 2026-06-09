@@ -44,6 +44,7 @@ public static class GameplayFoundationBootstrap
         {
             LevelTransitionOverlay.Hide();
             PlayerProgressionState.LogInventoryTransitionSnapshot(PersistentPlayerRig.Player, sceneName, isLeavingScene: false);
+            GameplayTransitionRestorer.RestoreGameplayAfterSceneLoad(sceneName);
             PersistentPlayerRig.EnsureOnGameplayCore(GameplayCore.EnsureExists())?.SchedulePostLoadRebind();
             GameplayCore.Instance?.Log($"Scene {sceneName} post-load rebind scheduled.");
             return;
@@ -55,6 +56,8 @@ public static class GameplayFoundationBootstrap
     static void BootstrapScene(string sceneName)
     {
         lastBootstrappedScene = sceneName;
+
+        RuntimeSingletonCleanup.CleanupDuplicateRuntimeObjects(sceneName);
 
         GameplayCore core = GameplayCore.EnsureExists();
         core.ProgressionState.EnsureCharacterProgressionInitialized(sceneName);
@@ -72,6 +75,7 @@ public static class GameplayFoundationBootstrap
 
         rig.EnsurePlayer(spawn, out bool createdNewPlayer);
         rig.EnsureMainCamera();
+        GameplayCrosshairController.EnsureCrosshairForPlayer();
 
         core.Abilities.EnsureInheritedAbilitiesForScene(sceneName);
         GameplayProgressionBootstrap.EnsureProgressionSystems();
@@ -85,11 +89,14 @@ public static class GameplayFoundationBootstrap
         GameplayPlacementBootstrap.EnsureInitialized(sceneName);
         rig.RebindSceneSystems();
 
+        LevelObjectiveUiRegistry.ResetForScene(sceneName);
         EnsureLevelSpecificContent(sceneName);
+        LevelObjectiveUiRegistry.ApplyForScene(sceneName);
 
         ModularLevelAssembler.EnsureAssembledForScene(core.ProgressionState, sceneName);
 
         LevelTransitionOverlay.Hide();
+        GameplayTransitionRestorer.RestoreGameplayAfterSceneLoad(sceneName);
         rig.SchedulePostLoadRebind();
 
         PlayerProgressionState.LogInventoryTransitionSnapshot(
@@ -317,11 +324,12 @@ public static class GameplayFoundationBootstrap
         portalUnlock.Configure(new Vector3(0f, 0.125f + 0.525f, 0f), "Level5", 0.3f);
         collectibleManager.RefreshTotalCount();
 
-        var hudGo = GameObject.Find("GameplayHUD");
+        var hudGo = RuntimeSingletonCleanup.ResolveSingleGameplayHud();
         if (hudGo != null)
         {
             var progressHud = hudGo.GetComponent<CollectibleProgressHud>() ?? hudGo.AddComponent<CollectibleProgressHud>();
             progressHud.BindTo(collectibleManager);
+            LevelObjectiveUiRegistry.NotifyProviderBound("Level4", nameof(CollectibleManager));
         }
     }
 

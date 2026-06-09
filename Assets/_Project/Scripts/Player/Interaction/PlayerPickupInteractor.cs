@@ -1,11 +1,11 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerPickupInteractor : MonoBehaviour
 {
     PlayerInventory inventory;
     PlayerGameplayTargeting targeting;
-    PlayerCraftingInteractor craftingInteractor;
+    PlayerCraftingAbility craftingAbility;
     string lastPickupMessage;
 
     public WorldPickupItem CurrentTarget => targeting != null ? targeting.WorldPickup : null;
@@ -29,19 +29,24 @@ public class PlayerPickupInteractor : MonoBehaviour
             targeting = gameObject.AddComponent<PlayerGameplayTargeting>();
         }
 
-        EnsureCraftingInteractor();
+        EnsureCraftingAbility();
     }
 
-    void EnsureCraftingInteractor()
+    void EnsureCraftingAbility()
     {
-        if (craftingInteractor == null)
+        if (craftingAbility == null)
         {
-            craftingInteractor = GetComponent<PlayerCraftingInteractor>();
+            craftingAbility = GetComponent<PlayerCraftingAbility>();
         }
 
-        if (craftingInteractor == null)
+        if (craftingAbility == null)
         {
-            craftingInteractor = gameObject.AddComponent<PlayerCraftingInteractor>();
+            craftingAbility = gameObject.AddComponent<PlayerCraftingAbility>();
+        }
+
+        if (GetComponent<PlayerCraftingInteractor>() == null)
+        {
+            gameObject.AddComponent<PlayerCraftingInteractor>();
         }
     }
 
@@ -126,36 +131,23 @@ public class PlayerPickupInteractor : MonoBehaviour
             return;
         }
 
-        EnsureCraftingInteractor();
-        if (craftingInteractor == null)
+        EnsureCraftingAbility();
+        if (craftingAbility == null)
         {
             return;
         }
 
-        if (targeting != null && targeting.HasCraftingStation)
+        if (craftingAbility.TryOpenWorkPanelOnE())
         {
-            if (craftingInteractor.TryOpenCrafting())
+            if (targeting != null && targeting.HasInteractableCraftingStation)
             {
                 GameplayCore.Instance?.Log(
                     $"Opened crafting UI from station: {PlayerGameplayTargeting.GetStationDisplayName(targeting.GetCraftingStationForE())}");
             }
-
-            return;
-        }
-
-        if (targeting != null && targeting.HasWorldPickup)
-        {
-            return;
-        }
-
-        if (targeting != null && targeting.PlacedPickup != null)
-        {
-            return;
-        }
-
-        if (craftingInteractor.TryOpenCrafting())
-        {
-            GameplayCore.Instance?.Log("Opened crafting UI (portable / nearby workstation).");
+            else
+            {
+                GameplayCore.Instance?.Log("Opened crafting UI (portable / nearby workstation).");
+            }
         }
     }
 

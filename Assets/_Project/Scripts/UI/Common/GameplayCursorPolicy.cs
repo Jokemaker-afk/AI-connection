@@ -21,12 +21,20 @@ public static class GameplayCursorPolicy
         Apply();
     }
 
+    public static void ResetForGameplay()
+    {
+        inventoryUiOpen = false;
+        craftingUiOpen = false;
+        Apply();
+    }
+
     public static void Apply()
     {
         if (IsAnyMenuOpen)
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            GameplayCrosshairController.RefreshForCurrentUIState();
             return;
         }
 
@@ -40,5 +48,7 @@ public static class GameplayCursorPolicy
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
+
+        GameplayCrosshairController.RefreshCrosshairVisibility();
     }
 }

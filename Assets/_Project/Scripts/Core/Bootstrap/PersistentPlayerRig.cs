@@ -130,12 +130,17 @@ public class PersistentPlayerRig : MonoBehaviour
         }
 
         var controller = player.GetComponent<PlayerController>();
-        if (controller != null && mainCamera != null)
+        if (controller != null)
         {
-            controller.BindCameraTransform(mainCamera.transform);
+            controller.enabled = true;
+            if (mainCamera != null)
+            {
+                controller.BindCameraTransform(mainCamera.transform);
+            }
         }
 
         GameplayHudBootstrap.BindAll();
+        GameplayCrosshairController.EnsureCrosshairForPlayer();
         GameplayPlacementBootstrap.EnsureInitialized();
         player.GetComponent<PlayerToolController>()?.RefreshEquippedTool();
         player.GetComponent<PlayerHeldItemController>()?.RefreshHeldItem();

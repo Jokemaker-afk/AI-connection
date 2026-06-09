@@ -26,6 +26,13 @@ public static class HandheldToolPrefabBuilder
         }
 
         HandheldToolProfile profile = ItemKindUtility.GetHandheldToolProfile(itemKind);
+        if (ItemHandheldPrefabResolver.TryResolve(itemKind, out GameObject assignedPrefab) && assignedPrefab != null)
+        {
+            PrefabCache[itemKind] = assignedPrefab;
+            HandheldToolDebug.Log($"Using assigned handheld prefab for {ItemKindUtility.GetDisplayName(itemKind)}.");
+            return assignedPrefab;
+        }
+
         if (profile.HandheldPrefab != null)
         {
             PrefabCache[itemKind] = profile.HandheldPrefab;

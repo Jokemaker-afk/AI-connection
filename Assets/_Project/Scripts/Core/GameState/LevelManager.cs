@@ -151,6 +151,12 @@ public class LevelManager : MonoBehaviour
 
         LevelTransitionOverlay.Hide();
         GameplayFoundationBootstrap.PrepareSceneTransition(sceneName);
+
+        if (player != null)
+        {
+            player.enabled = true;
+        }
+
         SceneManager.LoadScene(sceneName);
     }
 

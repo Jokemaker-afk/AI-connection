@@ -8,7 +8,7 @@ public class Level8ResourcePickupEnhancer : MonoBehaviour
 
     public void Configure(ItemKind kind, Level8BiomeKind biome = default)
     {
-        pickup = GetComponent<WorldPickupItem>();
+        pickup = GetComponentInChildren<WorldPickupItem>(true);
 
         if (!ItemPickupVisualResolver.HasResolvedVisual(kind, biome))
         {
@@ -48,7 +48,7 @@ public class Level8ResourcePickupEnhancer : MonoBehaviour
     {
         if (pickup == null)
         {
-            pickup = GetComponent<WorldPickupItem>();
+            pickup = GetComponentInChildren<WorldPickupItem>(true);
         }
 
         if (pickup != null && pickup.IsCollected)

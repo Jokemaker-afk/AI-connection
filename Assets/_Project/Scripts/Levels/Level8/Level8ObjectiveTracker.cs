@@ -111,4 +111,12 @@ public class Level8ObjectiveTracker : MonoBehaviour
     {
         OnProgressChanged?.Invoke();
     }
+
+    public void ResetForSceneEntry()
+    {
+        collectedDataCores = 0;
+        signalRelayActivated = false;
+        exitToLevel9Activated = false;
+        NotifyChanged();
+    }
 }

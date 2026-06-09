@@ -1,27 +1,25 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 [RequireComponent(typeof(PlayerStats))]
 public class PlayerShieldVisual : MonoBehaviour
 {
-    [SerializeField] Vector3 localOffset = new Vector3(0f, 1f, 0f);
-    [SerializeField] float baseDiameter = 2.5f;
-    [SerializeField] float pulseAmplitude = 0.06f;
+    const string DefaultShieldVisualResourcePath = "Player/VFX/PF_Generic_Player_ShieldBubble_03";
+
+    [SerializeField] GameObject shieldVisualPrefab;
+    [SerializeField] Vector3 localOffset = new Vector3(0f, 0.72f, 0f);
+    [SerializeField] float baseDiameter = 1.08f;
+    [SerializeField] float pulseAmplitude = 0.03f;
     [SerializeField] float pulseSpeed = 2.8f;
     [SerializeField] float spinSpeed = 40f;
     [SerializeField] float breakDuration = 0.35f;
 
-    const float ShieldAlpha = 0.8f;
-
-    static readonly Color ShellColor = new Color(0.35f, 0.72f, 1f, ShieldAlpha);
-    static readonly Color ShellEmission = new Color(0.2f, 0.55f, 1f);
-    static readonly Color GlowColor = new Color(0.5f, 0.85f, 1f, 0.45f);
-
     PlayerStats stats;
     Transform shieldRoot;
-    Material shellMaterial;
-    Material glowMaterial;
+    Renderer[] shieldRenderers;
+    Color[] baseColors;
+    Color[] edgeColors;
+    bool hasEdgeColors;
     bool isVisible;
     Coroutine breakRoutine;
 
@@ -131,18 +129,8 @@ public class PlayerShieldVisual : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float t = elapsed / breakDuration;
-            shieldRoot.localScale = Vector3.one * baseDiameter * Mathf.Lerp(1f, 1.4f, t);
-
-            if (shellMaterial != null)
-            {
-                shellMaterial.color = Color.Lerp(ShellColor, new Color(ShellColor.r, ShellColor.g, ShellColor.b, 0f), t);
-            }
-
-            if (glowMaterial != null)
-            {
-                glowMaterial.color = Color.Lerp(GlowColor, Color.clear, t);
-            }
-
+            shieldRoot.localScale = Vector3.one * baseDiameter * Mathf.Lerp(1f, 1.35f, t);
+            LerpShieldAlpha(Mathf.Lerp(1f, 0f, t));
             yield return null;
         }
 
@@ -153,102 +141,120 @@ public class PlayerShieldVisual : MonoBehaviour
 
     void BuildShieldVisual()
     {
-        if (transform.Find("ShieldVisual") != null)
+        shieldRoot = transform.Find("ShieldVisual");
+        if (shieldRoot == null)
         {
-            shieldRoot = transform.Find("ShieldVisual");
+            shieldRoot = new GameObject("ShieldVisual").transform;
+            shieldRoot.SetParent(transform, false);
+        }
+
+        shieldRoot.localPosition = localOffset;
+        shieldRoot.localRotation = Quaternion.identity;
+        shieldRoot.localScale = Vector3.one * baseDiameter;
+
+        Transform existingV3 = shieldRoot.Find("PF_Generic_Player_ShieldBubble_03");
+        if (existingV3 == null && shieldRoot.childCount > 0)
+        {
+            for (int i = shieldRoot.childCount - 1; i >= 0; i--)
+            {
+                Destroy(shieldRoot.GetChild(i).gameObject);
+            }
+        }
+
+        if (shieldRoot.childCount == 0)
+        {
+            GameObject prefab = ResolveShieldVisualPrefab();
+            if (prefab != null)
+            {
+                GameObject instance = Instantiate(prefab, shieldRoot);
+                instance.name = prefab.name;
+                instance.transform.localPosition = Vector3.zero;
+                instance.transform.localRotation = Quaternion.identity;
+                instance.transform.localScale = Vector3.one;
+                StripColliders(instance);
+            }
+            else
+            {
+                Debug.LogWarning("[PlayerShieldVisual] Shield visual prefab missing; shield bubble will not render.");
+            }
+        }
+
+        CacheRendererColors();
+    }
+
+    static GameObject ResolveShieldVisualPrefab(GameObject assignedPrefab)
+    {
+        if (assignedPrefab != null)
+        {
+            return assignedPrefab;
+        }
+
+        return Resources.Load<GameObject>(DefaultShieldVisualResourcePath);
+    }
+
+    GameObject ResolveShieldVisualPrefab()
+    {
+        return ResolveShieldVisualPrefab(shieldVisualPrefab);
+    }
+
+    static void StripColliders(GameObject root)
+    {
+        Collider[] colliders = root.GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Destroy(colliders[i]);
+        }
+    }
+
+    void CacheRendererColors()
+    {
+        shieldRenderers = shieldRoot.GetComponentsInChildren<Renderer>(true);
+        baseColors = new Color[shieldRenderers.Length];
+        edgeColors = new Color[shieldRenderers.Length];
+        hasEdgeColors = false;
+        for (int i = 0; i < shieldRenderers.Length; i++)
+        {
+            Material mat = shieldRenderers[i].material;
+            baseColors[i] = mat.HasProperty("_BaseColor") ? mat.GetColor("_BaseColor") : mat.color;
+            if (mat.HasProperty("_EdgeColor"))
+            {
+                edgeColors[i] = mat.GetColor("_EdgeColor");
+                hasEdgeColors = true;
+            }
+        }
+    }
+
+    void LerpShieldAlpha(float alphaScale)
+    {
+        if (shieldRenderers == null || baseColors == null)
+        {
             return;
         }
 
-        shieldRoot = new GameObject("ShieldVisual").transform;
-        shieldRoot.SetParent(transform, false);
-        shieldRoot.localPosition = localOffset;
-        shieldRoot.localRotation = Quaternion.identity;
-
-        var glow = CreateShell("ShieldGlow", Vector3.one * 1.12f, out glowMaterial);
-        glow.transform.SetParent(shieldRoot, false);
-        ApplyTransparentMaterial(glowMaterial, GlowColor, ShellEmission * 0.6f, additive: true);
-
-        var shell = CreateShell("ShieldShell", Vector3.one, out shellMaterial);
-        shell.transform.SetParent(shieldRoot, false);
-        ApplyTransparentMaterial(shellMaterial, ShellColor, ShellEmission * 1.4f, additive: false);
-
-        var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        ring.name = "ShieldRing";
-        ring.transform.SetParent(shieldRoot, false);
-        ring.transform.localPosition = Vector3.zero;
-        ring.transform.localRotation = Quaternion.identity;
-        ring.transform.localScale = new Vector3(1.08f, 0.02f, 1.08f);
-        Object.Destroy(ring.GetComponent<Collider>());
-
-        var ringMat = CreateBaseMaterial();
-        ApplyTransparentMaterial(ringMat, new Color(0.8f, 0.95f, 1f, ShieldAlpha), new Color(0.45f, 0.75f, 1f), additive: false);
-        ring.GetComponent<Renderer>().sharedMaterial = ringMat;
-    }
-
-    static GameObject CreateShell(string name, Vector3 scale, out Material material)
-    {
-        var shell = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        shell.name = name;
-        shell.transform.localPosition = Vector3.zero;
-        shell.transform.localRotation = Quaternion.identity;
-        shell.transform.localScale = scale;
-        Object.Destroy(shell.GetComponent<Collider>());
-        material = CreateBaseMaterial();
-        shell.GetComponent<Renderer>().sharedMaterial = material;
-        return shell;
-    }
-
-    static Material CreateBaseMaterial()
-    {
-        var shader = Shader.Find("Universal Render Pipeline/Unlit");
-        if (shader == null)
+        for (int i = 0; i < shieldRenderers.Length; i++)
         {
-            shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shieldRenderers[i] == null)
+            {
+                continue;
+            }
+
+            Material mat = shieldRenderers[i].material;
+            Color color = baseColors[i];
+            color.a *= alphaScale;
+            if (mat.HasProperty("_BaseColor"))
+            {
+                mat.SetColor("_BaseColor", color);
+            }
+
+            if (mat.HasProperty("_EdgeColor"))
+            {
+                Color edge = edgeColors[i];
+                edge.a *= alphaScale;
+                mat.SetColor("_EdgeColor", edge);
+            }
+
+            mat.color = color;
         }
-
-        if (shader == null)
-        {
-            shader = Shader.Find("Sprites/Default");
-        }
-
-        return new Material(shader);
-    }
-
-    static void ApplyTransparentMaterial(Material material, Color color, Color emission, bool additive)
-    {
-        material.color = color;
-        if (material.HasProperty("_EmissionColor"))
-        {
-            material.SetColor("_EmissionColor", emission);
-            material.EnableKeyword("_EMISSION");
-        }
-
-        if (material.HasProperty("_Surface"))
-        {
-            material.SetFloat("_Surface", 1f);
-        }
-
-        if (material.HasProperty("_Blend"))
-        {
-            material.SetFloat("_Blend", additive ? 2f : 0f);
-        }
-
-        if (material.HasProperty("_Cull"))
-        {
-            material.SetFloat("_Cull", (float)CullMode.Off);
-        }
-
-        if (material.HasProperty("_ZWrite"))
-        {
-            material.SetFloat("_ZWrite", 0f);
-        }
-
-        material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-        material.SetOverrideTag("RenderType", "Transparent");
-        material.SetInt("_SrcBlend", additive ? (int)BlendMode.SrcAlpha : (int)BlendMode.SrcAlpha);
-        material.SetInt("_DstBlend", additive ? (int)BlendMode.One : (int)BlendMode.OneMinusSrcAlpha);
-        material.renderQueue = additive ? (int)RenderQueue.Transparent + 10 : (int)RenderQueue.Transparent;
     }
 
     void ResetShieldAppearance()
@@ -259,18 +265,30 @@ public class PlayerShieldVisual : MonoBehaviour
         }
 
         shieldRoot.localScale = Vector3.one * baseDiameter;
-        if (shellMaterial != null)
+        if (shieldRenderers == null || baseColors == null)
         {
-            shellMaterial.color = ShellColor;
-            if (shellMaterial.HasProperty("_EmissionColor"))
-            {
-                shellMaterial.SetColor("_EmissionColor", ShellEmission * 1.4f);
-            }
+            CacheRendererColors();
         }
 
-        if (glowMaterial != null)
+        for (int i = 0; i < shieldRenderers.Length; i++)
         {
-            glowMaterial.color = GlowColor;
+            if (shieldRenderers[i] == null)
+            {
+                continue;
+            }
+
+            Material mat = shieldRenderers[i].material;
+            if (mat.HasProperty("_BaseColor"))
+            {
+                mat.SetColor("_BaseColor", baseColors[i]);
+            }
+
+            if (hasEdgeColors && mat.HasProperty("_EdgeColor"))
+            {
+                mat.SetColor("_EdgeColor", edgeColors[i]);
+            }
+
+            mat.color = baseColors[i];
         }
     }
 

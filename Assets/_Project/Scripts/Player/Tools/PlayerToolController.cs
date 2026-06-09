@@ -153,14 +153,32 @@ public class PlayerToolController : MonoBehaviour
             return;
         }
 
-        ToolInteractable target = targeting.ToolInteractable;
+        Ray crosshairRay = targeting.GetCenterScreenRay();
+        float playerRange = maxToolUseDistance;
+        float rayRange = PlayerToolTargeting.ResolveMaxRayDistance(this);
+        LayerMask layerMask = targeting.TargetLayerMask;
+
+        if (!PlayerToolTargeting.TryGetCrosshairToolTarget(
+                crosshairRay,
+                rayRange,
+                layerMask,
+                transform,
+                out PlayerToolTargeting.ToolTargetHit toolHit))
+        {
+            SetToolMessage("请瞄准有效目标");
+            HandheldToolDebug.Log("Empty swing: crosshair not on valid ToolInteractable.", this);
+            return;
+        }
+
+        ToolInteractable target = toolHit.Target;
         if (target == null || target.IsCompleted)
         {
+            SetToolMessage("请瞄准有效目标");
             HandheldToolDebug.Log("Empty swing: no valid ToolInteractable target.", this);
             return;
         }
 
-        if (!IsWithinToolUseDistance(target))
+        if (!IsWithinToolUseDistance(target, toolHit.Hit.point))
         {
             SetToolMessage("距离太远");
             HandheldToolDebug.Log("Tool hit rejected: out of range.", this);
@@ -169,7 +187,7 @@ public class PlayerToolController : MonoBehaviour
 
         if (!target.CanUseTool(equippedTool, out string denyMessage))
         {
-            SetToolMessage(denyMessage);
+            SetToolMessage(string.IsNullOrEmpty(denyMessage) ? "请瞄准有效目标" : denyMessage);
             HandheldToolDebug.Log($"Tool hit rejected: {denyMessage}", this);
             return;
         }
@@ -204,7 +222,19 @@ public class PlayerToolController : MonoBehaviour
             return string.Empty;
         }
 
-        if (!IsWithinToolUseDistance(target))
+        Ray crosshairRay = targeting.GetCenterScreenRay();
+        if (!PlayerToolTargeting.TryGetCrosshairToolTarget(
+                crosshairRay,
+                PlayerToolTargeting.ResolveMaxRayDistance(this),
+                targeting.TargetLayerMask,
+                transform,
+                out PlayerToolTargeting.ToolTargetHit toolHit)
+            || toolHit.Target != target)
+        {
+            return string.Empty;
+        }
+
+        if (!IsWithinToolUseDistance(target, toolHit.Hit.point))
         {
             return $"{target.DisplayNameChinese}\n距离太远";
         }
@@ -221,16 +251,19 @@ public class PlayerToolController : MonoBehaviour
         return $"{target.DisplayNameChinese}\n{prompt}\n左键使用";
     }
 
-    bool IsWithinToolUseDistance(ToolInteractable target)
+    bool IsWithinToolUseDistance(ToolInteractable target, Vector3 hitPoint)
     {
         if (target == null)
         {
             return false;
         }
 
-        Vector3 flat = target.transform.position - transform.position;
-        flat.y = 0f;
-        return flat.magnitude <= maxToolUseDistance;
+        if (PlayerToolTargeting.IsWithinToolRangeFromHit(transform, hitPoint, maxToolUseDistance))
+        {
+            return true;
+        }
+
+        return PlayerToolTargeting.IsWithinPlayerToolRange(transform, target, maxToolUseDistance);
     }
 
     bool ShouldBlockToolInput()

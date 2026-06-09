@@ -12,6 +12,12 @@ public static class Level8ResourceVisualUtility
             return null;
         }
 
+        if (WorldPickupPrefabUtility.IsCompleteWorldPickupPrefab(prefab))
+        {
+            Debug.LogWarning("[Level8] InstantiatePickupVisual called with complete pickup prefab; use ItemModuleFactory.SpawnWorldPickup instead.");
+            return null;
+        }
+
         Transform existingVisual = pickupRoot.Find(VisualChildName);
         if (existingVisual != null)
         {

@@ -1,12 +1,14 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class CollectibleProgressHud : MonoBehaviour
+public class CollectibleProgressHud : MonoBehaviour, ILevelObjectiveHudPanel
 {
     [SerializeField] CollectibleManager collectibleManager;
 
     RectTransform panelRoot;
     Text progressText;
+
+    public int ObjectiveLevel => 4;
 
     void Awake()
     {
@@ -39,6 +41,26 @@ public class CollectibleProgressHud : MonoBehaviour
         Unsubscribe();
         collectibleManager = manager;
         Subscribe();
+        RefreshObjectiveDisplay();
+    }
+
+    public void ResetForSceneTransition()
+    {
+        Unsubscribe();
+        collectibleManager = null;
+        if (progressText != null)
+        {
+            progressText.text = string.Empty;
+        }
+
+        if (panelRoot != null)
+        {
+            panelRoot.gameObject.SetActive(false);
+        }
+    }
+
+    public void RefreshObjectiveDisplay()
+    {
         Refresh();
     }
 

@@ -82,6 +82,7 @@ See `Documentation/EnvironmentArt/Environment_Asset_Architecture.md`.
 - `Environment/` — Chunks, TerrainPatches, WallsAndCliffs, Boundaries, Connectors
 - `Props/` — Decorations (by biome), Resources, Hazards, Objectives
 - `Level8/` — Level-8 curated chunk/objective/resource/hazard prefabs
+- `SceneModules/` — Reusable world interactables (ReturnButton, BuffStation, Portal, signs)
 - `Shared/` — Labels, interaction markers, VFX
 - `Enemies/` — existing enemy placeholders
 - Future: `Core/`, `Player/`, `Items/`, `UI/`, `Crafting/`, `Building/`
@@ -117,6 +118,7 @@ Level-specific **hand-authored** content: `Levels/LevelN/*PlaceholderBuilder.cs`
 | ImportWorkflow/ | FBX → prefab workflow for Level 8 |
 | ItemSystem/ | Item module workflow |
 | LevelDesign/ | Level module workflow, Level 8 prefab roadmap |
+| SceneModules/ | Level 3+ scene module audit and prefab migration |
 | Screenshots/ | Dev screenshots |
 
 ## Settings & input

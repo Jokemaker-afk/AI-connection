@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -203,6 +203,17 @@ public class PlayerInventoryHud : MonoBehaviour
         }
 
         RefreshAll();
+    }
+
+    public void ForceCloseForSceneTransition()
+    {
+        if (backpackOpen)
+        {
+            SetBackpackOpen(false);
+            return;
+        }
+
+        GameplayCursorPolicy.SetInventoryUiOpen(false);
     }
 
     void BindInventory()
@@ -1099,13 +1110,9 @@ public class PlayerInventoryHud : MonoBehaviour
         {
             bool canTake = inventory != null
                 && inventory.CanAcceptItem(gameplayTargeting.WorldPickup.ItemKind, gameplayTargeting.WorldPickup.Amount);
-            string prompt = gameplayTargeting.GetWorldPickupPrompt(canTake);
-            if (gameplayTargeting.HasInteractableCraftingStation)
-            {
-                string stationName = PlayerGameplayTargeting.GetStationDisplayName(
-                    gameplayTargeting.GetCraftingStationForE());
-                prompt = $"{prompt}\n按 E 使用：{stationName}";
-            }
+            string prompt = CombinePromptLines(
+                gameplayTargeting.GetWorldPickupPrompt(canTake),
+                GetCraftingPromptText());
 
             GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
             pickupPromptRoot.gameObject.SetActive(!string.IsNullOrEmpty(prompt));
@@ -1123,27 +1130,17 @@ public class PlayerInventoryHud : MonoBehaviour
                 ? $"按 F 回收：{itemName}"
                 : $"按 F 回收：{itemName}（背包已满）";
 
-            if (gameplayTargeting.HasInteractableCraftingStation)
-            {
-                string stationName = PlayerGameplayTargeting.GetStationDisplayName(
-                    gameplayTargeting.GetCraftingStationForE());
-                GameplayChineseText.PrepareUiText(pickupPromptText, $"按 E 使用：{stationName}\n{recoverLine}");
-            }
-            else
-            {
-                GameplayChineseText.PrepareUiText(pickupPromptText, recoverLine);
-            }
-
-            pickupPromptRoot.gameObject.SetActive(true);
+            string prompt = CombinePromptLines(recoverLine, GetCraftingPromptText());
+            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
+            pickupPromptRoot.gameObject.SetActive(!string.IsNullOrEmpty(prompt));
             return;
         }
 
         if (gameplayTargeting != null && gameplayTargeting.HasInteractableCraftingStation)
         {
-            string stationName = PlayerGameplayTargeting.GetStationDisplayName(
-                gameplayTargeting.GetCraftingStationForE());
-            GameplayChineseText.PrepareUiText(pickupPromptText, $"按 E 使用：{stationName}");
-            pickupPromptRoot.gameObject.SetActive(true);
+            string prompt = GetCraftingPromptText();
+            GameplayChineseText.PrepareUiText(pickupPromptText, prompt);
+            pickupPromptRoot.gameObject.SetActive(!string.IsNullOrEmpty(prompt));
             return;
         }
 
@@ -1217,21 +1214,46 @@ public class PlayerInventoryHud : MonoBehaviour
             return;
         }
 
-        var craftingInteractor = pickupInteractor != null
-            ? pickupInteractor.GetComponent<PlayerCraftingInteractor>()
-            : FindFirstObjectByType<PlayerCraftingInteractor>();
-        if (craftingInteractor != null)
+        var craftingPrompt = GetCraftingPromptText();
+        if (!string.IsNullOrEmpty(craftingPrompt))
         {
-            string craftingPrompt = craftingInteractor.GetPromptText();
-            if (!string.IsNullOrEmpty(craftingPrompt))
-            {
-                GameplayChineseText.PrepareUiText(pickupPromptText, craftingPrompt);
-                pickupPromptRoot.gameObject.SetActive(true);
-                return;
-            }
+            GameplayChineseText.PrepareUiText(pickupPromptText, craftingPrompt);
+            pickupPromptRoot.gameObject.SetActive(true);
+            return;
         }
 
         pickupPromptRoot.gameObject.SetActive(false);
+    }
+
+    static string CombinePromptLines(string primary, string secondary)
+    {
+        if (string.IsNullOrEmpty(primary))
+        {
+            return secondary ?? string.Empty;
+        }
+
+        if (string.IsNullOrEmpty(secondary))
+        {
+            return primary;
+        }
+
+        return primary + "\n" + secondary;
+    }
+
+    string GetCraftingPromptText()
+    {
+        PlayerCraftingAbility ability = pickupInteractor != null
+            ? pickupInteractor.GetComponent<PlayerCraftingAbility>()
+            : FindFirstObjectByType<PlayerCraftingAbility>();
+        if (ability != null)
+        {
+            return ability.GetWorkPanelPromptText();
+        }
+
+        PlayerCraftingInteractor interactor = pickupInteractor != null
+            ? pickupInteractor.GetComponent<PlayerCraftingInteractor>()
+            : FindFirstObjectByType<PlayerCraftingInteractor>();
+        return interactor != null ? interactor.GetPromptText() : string.Empty;
     }
 
     static bool IsNearExitPortal(Level8ExitPortal exitPortal)

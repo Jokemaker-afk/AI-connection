@@ -24,6 +24,11 @@ public class PlayerPlacementController : MonoBehaviour
     public ItemKind ActiveItem => activeItem;
     public string LastPlacementMessage => lastPlacementMessage;
 
+    public void CancelPlacementForSceneTransition()
+    {
+        HidePreview();
+    }
+
     void Awake()
     {
         inventory = GetComponent<PlayerInventory>();

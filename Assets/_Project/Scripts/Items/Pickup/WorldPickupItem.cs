@@ -22,11 +22,13 @@ public class WorldPickupItem : MonoBehaviour
     public string DisplayNameChinese => ItemKindUtility.GetDisplayName(itemKind);
     public bool IsGroundRestingPickup => GetComponent<DroppedItemMarker>() != null;
 
+    Transform MotionTransform => WorldPickupPrefabUtility.ResolvePickupMotionTransform(gameObject);
+
     void Awake()
     {
-        basePosition = transform.position;
+        basePosition = MotionTransform.position;
         PickupItemInteractionSetup.EnsureColliders(gameObject, this);
-        GameplayLayers.TrySetPickupLayer(gameObject);
+        GameplayLayers.TrySetPickupLayer(WorldPickupPrefabUtility.ResolvePickupInstanceRoot(gameObject));
         RefreshLabel();
     }
 
@@ -119,8 +121,9 @@ public class WorldPickupItem : MonoBehaviour
         }
 
         float bob = Mathf.Sin(Time.time * bobSpeed) * bobAmplitude;
-        transform.position = basePosition + Vector3.up * bob;
-        transform.Rotate(Vector3.up, spinSpeed * Time.deltaTime, Space.World);
+        Transform motion = MotionTransform;
+        motion.position = basePosition + Vector3.up * bob;
+        motion.Rotate(Vector3.up, spinSpeed * Time.deltaTime, Space.World);
         UpdatePickableGroundMarker();
     }
 
@@ -220,7 +223,8 @@ public class WorldPickupItem : MonoBehaviour
         }
 
         CollectibleManager.Instance?.RegisterCollection();
-        Destroy(gameObject);
+        GameObject instanceRoot = WorldPickupPrefabUtility.ResolvePickupInstanceRoot(gameObject);
+        Destroy(instanceRoot != null ? instanceRoot : gameObject);
         return true;
     }
 
@@ -228,7 +232,7 @@ public class WorldPickupItem : MonoBehaviour
     {
         itemKind = kind;
         amount = Mathf.Max(1, pickupAmount);
-        basePosition = transform.position;
+        basePosition = MotionTransform.position;
         PickupItemInteractionSetup.EnsureColliders(gameObject, this);
         RefreshLabel();
     }
@@ -244,6 +248,6 @@ public class WorldPickupItem : MonoBehaviour
         }
 
         root.name = name;
-        return root.GetComponent<WorldPickupItem>();
+        return root.GetComponentInChildren<WorldPickupItem>(true);
     }
 }

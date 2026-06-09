@@ -11,12 +11,22 @@ public static class PlacedObjectBuilder
 
     public static Vector3 GetPlacedVisualScale(ItemKind itemKind)
     {
-        return GetVisualScale(itemKind);
+        if (PlacedObjectBoundsUtility.TryGetFittedPlacementSize(itemKind, out Vector3 fittedSize))
+        {
+            return fittedSize;
+        }
+
+        return GetCatalogVisualScale(itemKind);
     }
 
     public static Vector3 GetPlacementHalfExtents(ItemKind itemKind)
     {
-        Vector3 scale = GetVisualScale(itemKind);
+        if (PlacedObjectBoundsUtility.TryGetFittedPlacementHalfExtents(itemKind, out Vector3 halfExtents))
+        {
+            return halfExtents;
+        }
+
+        Vector3 scale = GetCatalogVisualScale(itemKind);
         float pad = PlacementCheckPadding;
         return new Vector3(scale.x * 0.5f - pad, scale.y * 0.5f - pad, scale.z * 0.5f - pad);
     }
@@ -37,7 +47,7 @@ public static class PlacedObjectBuilder
         root.transform.position = position;
         root.transform.rotation = rotation;
 
-        Vector3 scale = GetVisualScale(itemKind);
+        Vector3 scale = GetCatalogVisualScale(itemKind);
         Vector3 visualOffset = Vector3.up * scale.y * 0.5f;
         ItemVisualBuilder.CreatePlacedVisual(root.transform, itemKind, scale, visualOffset);
 
@@ -60,7 +70,7 @@ public static class PlacedObjectBuilder
         return root;
     }
 
-    static Vector3 GetVisualScale(ItemKind itemKind)
+    public static Vector3 GetCatalogVisualScale(ItemKind itemKind)
     {
         if (ItemCatalog.TryGet(itemKind, out ItemData data) && data.IsValid && data.PlacedBoundsSize.sqrMagnitude > 0.01f)
         {
@@ -170,7 +180,7 @@ public static class PlacedObjectBuilder
             return false;
         }
 
-        Vector3 scale = GetVisualScale(itemKind);
+        Vector3 scale = GetPlacedVisualScale(itemKind);
         Vector3 halfExtents = GetPlacementHalfExtents(itemKind);
         Vector3 center = position + Vector3.up * scale.y * 0.5f;
 

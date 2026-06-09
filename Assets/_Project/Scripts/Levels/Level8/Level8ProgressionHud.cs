@@ -1,10 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class Level8ProgressionHud : MonoBehaviour
+public class Level8ProgressionHud : MonoBehaviour, ILevelObjectiveHudPanel
 {
     RectTransform panelRoot;
     Text objectiveText;
+
+    public int ObjectiveLevel => 8;
 
     void Awake()
     {
@@ -39,6 +41,26 @@ public class Level8ProgressionHud : MonoBehaviour
         {
             tracker.OnProgressChanged -= RefreshObjective;
         }
+    }
+
+    public void ResetForSceneTransition()
+    {
+        Unsubscribe();
+        if (objectiveText != null)
+        {
+            GameplayChineseText.PrepareUiText(objectiveText, string.Empty);
+        }
+
+        if (panelRoot != null)
+        {
+            panelRoot.gameObject.SetActive(false);
+        }
+    }
+
+    public void RefreshObjectiveDisplay()
+    {
+        Subscribe();
+        RefreshObjective();
     }
 
     void RefreshObjective()

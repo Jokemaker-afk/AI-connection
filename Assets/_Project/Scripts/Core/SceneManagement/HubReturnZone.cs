@@ -4,11 +4,16 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(BoxCollider))]
 public class HubReturnZone : MonoBehaviour
 {
+    const string VisualRootName = "VisualRoot";
+    const string LabelAnchorName = "LabelAnchor";
+    const string InteractionPointName = "InteractionPoint";
+
     static Vector3 hubSpawnPoint = new Vector3(0f, 0.25f, 0f);
 
     [SerializeField] string promptText = "按 R 返回第三关原点";
 
     bool playerInside;
+    bool moduleVisualBuilt;
 
     public static void SetHubSpawn(Vector3 spawn)
     {
@@ -19,6 +24,9 @@ public class HubReturnZone : MonoBehaviour
     {
         var box = GetComponent<BoxCollider>();
         box.isTrigger = true;
+        EnsureLabelAnchor();
+        EnsureInteractionPoint();
+        EnsureModuleVisual();
     }
 
     void OnTriggerEnter(Collider other)
@@ -83,15 +91,100 @@ public class HubReturnZone : MonoBehaviour
         trigger.isTrigger = true;
         trigger.size = size;
 
+        var zone = root.AddComponent<HubReturnZone>();
+        return zone;
+    }
+
+    void EnsureModuleVisual()
+    {
+        if (moduleVisualBuilt)
+        {
+            return;
+        }
+
+        MigrateLegacyReturnButtonChild();
+        BuildModuleVisual();
+    }
+
+    void MigrateLegacyReturnButtonChild()
+    {
+        Transform legacyButton = transform.Find("ReturnButton");
+        if (legacyButton != null && legacyButton.parent == transform)
+        {
+            Destroy(legacyButton.gameObject);
+        }
+    }
+
+    void BuildModuleVisual()
+    {
+        Transform visualRoot = EnsureVisualRootTransform();
+        SceneModuleVisualUtility.ClearVisualChildren(visualRoot);
+
+        if (ReturnButtonPrefabCatalog.TryResolveReturnButtonPrefab(out GameObject prefab) && prefab != null)
+        {
+            SceneModuleVisualUtility.InstantiateModuleVisual(prefab, visualRoot);
+        }
+        else
+        {
+            BuildPrimitiveReturnButtonVisual(visualRoot);
+        }
+
+        moduleVisualBuilt = true;
+    }
+
+    Transform EnsureVisualRootTransform()
+    {
+        Transform visualRoot = transform.Find(VisualRootName);
+        if (visualRoot != null)
+        {
+            return visualRoot;
+        }
+
+        var visualRootGo = new GameObject(VisualRootName);
+        visualRootGo.transform.SetParent(transform, false);
+        visualRootGo.transform.localPosition = Vector3.zero;
+        visualRootGo.transform.localRotation = Quaternion.identity;
+        visualRootGo.transform.localScale = Vector3.one;
+        return visualRootGo.transform;
+    }
+
+    void EnsureLabelAnchor()
+    {
+        Transform labelAnchor = transform.Find(LabelAnchorName);
+        if (labelAnchor != null)
+        {
+            return;
+        }
+
+        var labelGo = new GameObject(LabelAnchorName);
+        labelGo.transform.SetParent(transform, false);
+        labelGo.transform.localPosition = new Vector3(0f, 1.2f, 0f);
+    }
+
+    void EnsureInteractionPoint()
+    {
+        Transform interactionPoint = transform.Find(InteractionPointName);
+        if (interactionPoint != null)
+        {
+            return;
+        }
+
+        var pointGo = new GameObject(InteractionPointName);
+        pointGo.transform.SetParent(transform, false);
+        pointGo.transform.localPosition = new Vector3(0f, 0.6f, 0f);
+    }
+
+    static void BuildPrimitiveReturnButtonVisual(Transform visualRoot)
+    {
         var button = GameObject.CreatePrimitive(PrimitiveType.Cube);
         button.name = "ReturnButton";
-        button.transform.SetParent(root.transform, false);
+        button.transform.SetParent(visualRoot, false);
         button.transform.localPosition = Vector3.up * 0.6f;
         button.transform.localScale = new Vector3(2.4f, 0.35f, 1.2f);
         button.isStatic = true;
-        Object.DestroyImmediate(button.GetComponent<Collider>());
+        Object.Destroy(button.GetComponent<Collider>());
 
-        var renderer = button.GetComponent<Renderer>();
+        Renderer renderer = button.GetComponent<Renderer>();
         if (renderer != null)
         {
             var material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
@@ -100,11 +193,5 @@ public class HubReturnZone : MonoBehaviour
             material.EnableKeyword("_EMISSION");
             renderer.sharedMaterial = material;
         }
-
-        var labelGo = new GameObject("LabelAnchor");
-        labelGo.transform.SetParent(root.transform, false);
-        labelGo.transform.localPosition = new Vector3(0f, 1.2f, 0f);
-
-        return root.AddComponent<HubReturnZone>();
     }
 }

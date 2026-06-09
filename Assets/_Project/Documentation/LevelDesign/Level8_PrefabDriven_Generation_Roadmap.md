@@ -20,7 +20,7 @@ Level 8 builds the playable map at runtime via C# builders:
 | Data core | `DataCoreCollectible.BuildVisuals()` | Sphere + cylinder |
 | Signal relay | `SignalRelayInteractable.BuildVisuals()` | Cylinder tower |
 | Exit portal | `Level8ExitPortal.BuildVisuals()` | Cylinder arch |
-| Hazards | `Level8HazardZoneBuilder` | Cube zone + posts |
+| Hazards | `Level8HazardZoneBuilder` | Cube zone + posts (**not** `SpikeTrap`; do not swap to spike prefab) |
 | Bootstrap | `GameplayFoundationBootstrap.EnsureLevel8Content()` | Triggers generation on load |
 
 **Strengths:** fast iteration, seed/biome/chunk logic proven, full fallback always available.

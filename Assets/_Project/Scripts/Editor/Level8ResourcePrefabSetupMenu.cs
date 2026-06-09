@@ -7,10 +7,10 @@ using UnityEngine;
 /// </summary>
 public static class Level8ResourcePrefabSetupMenu
 {
-    const string PrefabFolder = "Assets/_Project/Prefabs/Level8/ResourcePrefabs";
-    const string WoodPrefabPath = PrefabFolder + "/PF_Generic_Resource_Wood_01.prefab";
-    const string StonePrefabPath = PrefabFolder + "/PF_Generic_Resource_Stone_01.prefab";
-    const string OrePrefabPath = PrefabFolder + "/PF_Generic_Resource_OreFragment_01.prefab";
+    static readonly string PrefabFolder = ItemWorldPickupAssetPaths.ResourcesPrefabRoot.TrimEnd('/');
+    const string WoodPrefabPath = ItemWorldPickupAssetPaths.WoodPrefab;
+    const string StonePrefabPath = ItemWorldPickupAssetPaths.StonePrefab;
+    const string OrePrefabPath = ItemWorldPickupAssetPaths.OreFragmentPrefab;
     const string RegistryResourcePath = "Assets/_Project/Resources/Level8/Level8ResourcePrefabRegistry.asset";
 
     [MenuItem("Tools/Level8/Create Resource Test Prefabs And Registry")]

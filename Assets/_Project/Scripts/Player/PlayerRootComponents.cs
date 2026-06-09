@@ -24,6 +24,7 @@ public static class PlayerRootComponents
         EnsureComponent<PlayerShieldVisual>(playerRoot);
         EnsureComponent<PlayerInventory>(playerRoot);
         EnsureComponent<PlayerPickupInteractor>(playerRoot);
+        EnsureComponent<PlayerCraftingAbility>(playerRoot);
         EnsureComponent<PlayerCraftingInteractor>(playerRoot);
         EnsureComponent<PlayerPlacementController>(playerRoot);
         EnsureComponent<PlayerGameplayTargeting>(playerRoot);
